@@ -1,0 +1,375 @@
+/**
+ * Underplan Design Tokens & Core CAD-Lite UI Stylesheet
+ * Graphite UI (#121316 / #18191E / #22242B) + Multiboard Pattern + Channel Telemetry
+ */
+
+:root {
+  /* ==========================================================================
+     Surfaces & Depth (Graphite Hierarchy)
+     ========================================================================== */
+  --up-bg-canvas: #121316;
+  --up-bg-base: #15161A;
+  --up-bg-panel: #18191E;
+  --up-bg-panel-alpha: rgba(24, 25, 30, 0.85);
+  --up-bg-raised: #22242B;
+  --up-bg-overlay: #282A33;
+  --up-bg-recessed: #0E0F12;
+
+  /* ==========================================================================
+     Borders & Dividers
+     ========================================================================== */
+  --up-border-subtle: #22242B;
+  --up-border-default: #2A2D36;
+  --up-border-strong: #383C48;
+  --up-border-hover: #4A5060;
+  --up-border-focus: #6366F1;
+  --up-border-accent: #38BDF8;
+
+  /* ==========================================================================
+     Typography & Text Hierarchy
+     ========================================================================== */
+  --up-text-primary: #F1F5F9;
+  --up-text-secondary: #94A3B8;
+  --up-text-muted: #64748B;
+  --up-text-disabled: #475569;
+  --up-text-accent: #818CF8;
+  --up-text-cyan: #38BDF8;
+
+  --up-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --up-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+
+  /* ==========================================================================
+     Interactive Accents
+     ========================================================================== */
+  --up-accent-primary: #6366F1;
+  --up-accent-hover: #4F46E5;
+  --up-accent-highlight: #38BDF8;
+  --up-accent-subtle: rgba(99, 102, 241, 0.14);
+  --up-accent-glow: 0 0 12px rgba(99, 102, 241, 0.35);
+
+  /* ==========================================================================
+     Validation & Status
+     ========================================================================== */
+  --up-status-success: #10B981;
+  --up-status-success-bg: rgba(16, 185, 129, 0.12);
+  --up-status-success-border: rgba(16, 185, 129, 0.35);
+
+  --up-status-warning: #F59E0B;
+  --up-status-warning-bg: rgba(245, 158, 11, 0.12);
+  --up-status-warning-border: rgba(245, 158, 11, 0.35);
+
+  --up-status-error: #EF4444;
+  --up-status-error-bg: rgba(239, 68, 68, 0.14);
+  --up-status-error-border: rgba(239, 68, 68, 0.40);
+
+  --up-status-info: #38BDF8;
+  --up-status-info-bg: rgba(56, 189, 248, 0.12);
+  --up-status-info-border: rgba(56, 189, 248, 0.35);
+
+  /* ==========================================================================
+     Channel & Routing Spectrum
+     ========================================================================== */
+  /* Power */
+  --up-channel-power: #F59E0B;
+  --up-channel-power-bg: rgba(245, 158, 11, 0.12);
+  --up-channel-power-border: rgba(245, 158, 11, 0.35);
+  --up-channel-power-glow: 0 0 10px rgba(245, 158, 11, 0.45);
+
+  /* Data / USB */
+  --up-channel-data: #06B6D4;
+  --up-channel-data-bg: rgba(6, 182, 212, 0.12);
+  --up-channel-data-border: rgba(6, 182, 212, 0.35);
+  --up-channel-data-glow: 0 0 10px rgba(6, 182, 212, 0.45);
+
+  /* Video / Display */
+  --up-channel-video: #8B5CF6;
+  --up-channel-video-bg: rgba(139, 92, 246, 0.12);
+  --up-channel-video-border: rgba(139, 92, 246, 0.35);
+  --up-channel-video-glow: 0 0 10px rgba(139, 92, 246, 0.45);
+
+  /* Network / Ethernet */
+  --up-channel-network: #10B981;
+  --up-channel-network-bg: rgba(16, 185, 129, 0.12);
+  --up-channel-network-border: rgba(16, 185, 129, 0.35);
+  --up-channel-network-glow: 0 0 10px rgba(16, 185, 129, 0.45);
+
+  /* Neutral / Unassigned */
+  --up-channel-neutral: #94A3B8;
+  --up-channel-neutral-bg: rgba(148, 163, 184, 0.12);
+  --up-channel-neutral-border: rgba(148, 163, 184, 0.30);
+  --up-channel-neutral-glow: 0 0 8px rgba(148, 163, 184, 0.30);
+
+  /* ==========================================================================
+     Dimensions, Radii & Shadows
+     ========================================================================== */
+  --up-radius-xs: 2px;
+  --up-radius-sm: 4px;
+  --up-radius-md: 6px;
+  --up-radius-lg: 8px;
+  --up-radius-xl: 12px;
+  --up-radius-full: 9999px;
+
+  --up-shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px #2A2D36;
+  --up-shadow-floating: 0 8px 24px -4px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 1px #2A2D36;
+  --up-shadow-overlay: 0 16px 40px -8px rgba(0, 0, 0, 0.8), 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px #383C48;
+}
+
+/* ==========================================================================
+   Tabular Numbers for CAD Readouts
+   ========================================================================== */
+.up-tnum {
+  font-feature-settings: "tnum" 1, "zero" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Multiboard Octagonal Canvas Grid
+   ========================================================================== */
+.up-canvas-multiboard {
+  background-color: var(--up-bg-canvas);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' fill='%23121316'/%3E%3Cpath d='M0 0h50v50H0z' fill='none' stroke='%2318191E' stroke-width='0.5'/%3E%3Cpolygon points='21,17 29,17 33,21 33,29 29,33 21,33 17,29 17,21' fill='%230E0F12' stroke='%2322242B' stroke-width='1'/%3E%3Ccircle cx='25' cy='25' r='1.5' fill='%232A2D36'/%3E%3Cpolygon points='0,4 4,0 -4,0' fill='%230E0F12' stroke='%2322242B' stroke-width='1'/%3E%3Cpolygon points='50,4 46,0 54,0' fill='%230E0F12' stroke='%2322242B' stroke-width='1'/%3E%3Cpolygon points='0,46 4,50 -4,50' fill='%230E0F12' stroke='%2322242B' stroke-width='1'/%3E%3Cpolygon points='50,46 46,50 54,50' fill='%230E0F12' stroke='%2322242B' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='1.5' fill='%232A2D36'/%3E%3Ccircle cx='50' cy='0' r='1.5' fill='%232A2D36'/%3E%3Ccircle cx='0' cy='50' r='1.5' fill='%232A2D36'/%3E%3Ccircle cx='50' cy='50' r='1.5' fill='%232A2D36'/%3E%3C/svg%3E");
+  background-size: 50px 50px;
+}
+
+/* ==========================================================================
+   Panel Containers & Docking
+   ========================================================================== */
+.up-panel {
+  background-color: var(--up-bg-panel);
+  border: 1px solid var(--up-border-default);
+  border-radius: var(--up-radius-md);
+  box-shadow: var(--up-shadow-panel);
+}
+
+.up-panel-floating {
+  background-color: var(--up-bg-panel-alpha);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--up-border-default);
+  border-radius: var(--up-radius-lg);
+  box-shadow: var(--up-shadow-floating);
+}
+
+.up-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--up-border-subtle);
+  font-family: var(--up-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--up-text-secondary);
+  user-select: none;
+}
+
+/* ==========================================================================
+   CAD Buttons & Tool Controls
+   ========================================================================== */
+.up-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  font-family: var(--up-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: var(--up-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 120ms ease;
+  white-space: nowrap;
+}
+
+.up-btn-primary {
+  background-color: var(--up-accent-primary);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.up-btn-primary:hover {
+  background-color: var(--up-accent-hover);
+}
+
+.up-btn-secondary {
+  background-color: var(--up-bg-raised);
+  color: var(--up-text-primary);
+  border-color: var(--up-border-default);
+}
+
+.up-btn-secondary:hover {
+  border-color: var(--up-border-hover);
+  background-color: #282B34;
+}
+
+.up-btn-ghost {
+  background: transparent;
+  color: var(--up-text-secondary);
+}
+
+.up-btn-ghost:hover {
+  background-color: var(--up-bg-raised);
+  color: var(--up-text-primary);
+}
+
+/* Tool Action Button (in CAD Toolbar) */
+.up-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--up-radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--up-text-secondary);
+  cursor: pointer;
+  transition: all 100ms ease;
+}
+
+.up-tool-btn:hover {
+  background-color: var(--up-bg-raised);
+  border-color: var(--up-border-default);
+  color: var(--up-text-primary);
+}
+
+.up-tool-btn-active {
+  background-color: var(--up-accent-subtle) !important;
+  border-color: var(--up-accent-primary) !important;
+  color: var(--up-accent-primary) !important;
+  box-shadow: var(--up-accent-glow);
+}
+
+/* ==========================================================================
+   Segmented Control (Tool Mode Switcher)
+   ========================================================================== */
+.up-segmented-group {
+  display: inline-flex;
+  padding: 2px;
+  background-color: var(--up-bg-recessed);
+  border: 1px solid var(--up-border-default);
+  border-radius: var(--up-radius-md);
+  gap: 2px;
+}
+
+.up-segmented-item {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--up-radius-sm);
+  color: var(--up-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.up-segmented-item:hover {
+  color: var(--up-text-primary);
+}
+
+.up-segmented-item-active {
+  background-color: var(--up-bg-raised);
+  color: var(--up-text-primary);
+  border: 1px solid var(--up-border-strong);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   Scrubbable Numeric Inputs & Parameters
+   ========================================================================== */
+.up-input-numeric {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 6px;
+  background-color: var(--up-bg-recessed);
+  border: 1px solid var(--up-border-default);
+  border-radius: var(--up-radius-sm);
+  color: var(--up-text-primary);
+  font-family: var(--up-font-mono);
+  font-size: 11px;
+  font-feature-settings: "tnum" 1;
+  cursor: ew-resize;
+  transition: border-color 100ms ease;
+}
+
+.up-input-numeric:focus-within {
+  border-color: var(--up-border-focus);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  cursor: text;
+}
+
+/* ==========================================================================
+   Channel Pills & Wire Telemetry Badges
+   ========================================================================== */
+.up-channel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-family: var(--up-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--up-radius-xs);
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.up-channel-badge-power {
+  color: var(--up-channel-power);
+  background-color: var(--up-channel-power-bg);
+  border-color: var(--up-channel-power-border);
+}
+
+.up-channel-badge-data {
+  color: var(--up-channel-data);
+  background-color: var(--up-channel-data-bg);
+  border-color: var(--up-channel-data-border);
+}
+
+.up-channel-badge-video {
+  color: var(--up-channel-video);
+  background-color: var(--up-channel-video-bg);
+  border-color: var(--up-channel-video-border);
+}
+
+.up-channel-badge-network {
+  color: var(--up-channel-network);
+  background-color: var(--up-channel-network-bg);
+  border-color: var(--up-channel-network-border);
+}
+
+.up-channel-badge-neutral {
+  color: var(--up-channel-neutral);
+  background-color: var(--up-channel-neutral-bg);
+  border-color: var(--up-channel-neutral-border);
+}
+
+/* ==========================================================================
+   Custom Precision Dark Scrollbars
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--up-bg-panel);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--up-border-strong);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--up-border-hover);
+}
