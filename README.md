@@ -1,7 +1,15 @@
 # Underplan ⚡🔌
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tests](https://img.shields.io/badge/Tests-72%2F72%20Passing-emerald)](tests/)
+
 > **Plan your Underware cable-management layout before you print.**  
 > A fast, polished visual planning tool for Underware 2.0 cable channels mounted on KeepMaking Multiboard pegboard grids, featuring automatic snap connector tallying and Bill of Materials (BOM) generation.
+
+![Underplan Interactive Workspace Overview](docs/screenshots/01-overview.png)
 
 ---
 
@@ -38,13 +46,19 @@ Open [http://localhost:5173](http://localhost:5173) in your browser to start pla
 ```bash
 npm test
 ```
-Executes the native test suite covering geometry math, discrete rotations, collision algorithms, snap tallying, and acceptance criteria (35/35 passing tests).
+Executes the native test suite covering geometry math, discrete rotations, collision algorithms, snap tallying, and acceptance criteria (72/72 passing tests).
 
 ### 4. Build for Production
 ```bash
 npm run build
 ```
 Creates an optimized, type-checked production bundle in `dist/`.
+
+### 5. Generate High-Res Screenshots
+```bash
+npm run screenshots
+```
+Uses Puppeteer and headless Chrome to generate Retina-quality screenshots of the app in `docs/screenshots/`.
 
 ---
 
@@ -62,6 +76,26 @@ Creates an optimized, type-checked production bundle in `dist/`.
 | **Smart Spare Snap Policy** | Automatically calculates snap connectors per segment type and applies a configurable **+10% spare rate** (rounded up) for printing safety. |
 | **One-Click Export** | Download RFC-4180 standard CSV files or copy formatted Markdown specifications directly to the clipboard with toast feedback. |
 | **Curated Demo Layout** | One-click "Load Demo" button loads a realistic under-desk dual-tier cable routing plan demonstrating high-voltage/low-voltage separation. |
+
+---
+
+## 📸 Interface & Workflow Gallery
+
+### 1. CAD-Lite Planning Canvas & Overview
+Full dark graphite workspace with Multiboard 25mm octagonal pegboard grid, KeepMaking tile matrices, and functional color-coded cable pathways (Power, Data, Video, Network).
+![Underplan Interactive Workspace Overview](docs/screenshots/01-overview.png)
+
+### 2. Contextual Channel Inspector & Parametric Sizing
+Select any placed conduit to inspect physical dimensions (1 MU = 25mm), change 90° discrete rotations, tune parametric lengths (1–16 MU), configure mounting hardware, or edit manual snap anchors.
+![Contextual Channel Inspector](docs/screenshots/02-channel-inspector.png)
+
+### 3. Modular Underware 2.0 Catalog & Category Palette
+Left tool palette providing direct access to Straight channels, Elbow turns, Radial curves (R2–R5), T-Junctions, Y-Branches, Crosses, Mitred corners, and modular accessories (Cable Spool, Multi-Socket Holder).
+![Modular Underware 2.0 Channel Library](docs/screenshots/03-channel-palette.png)
+
+### 4. Real-Time Bill of Materials (BOM) & Hardware Calculator
+Interactive modal detailing exact 3D print part tallies, Multiboard tile counts, and snap fastener counts with an automatic +10% spare safety margin. Export to CSV or copy to clipboard as Markdown in one click.
+![Bill of Materials Modal](docs/screenshots/04-bom-modal.png)
 
 ---
 
@@ -108,11 +142,14 @@ Underplan uses explicit, standardized mathematical assumptions:
 ```
 UnderPlan/
 ├── docs/
+│   ├── screenshots/            # HiDPI Retina screenshots for repository showcase
 │   ├── domain-assumptions.md   # Domain rules, snap math, and KeepMaking assumptions
-│   ├── ux-spec.md              # UX flows, wireframes, keyboard hotkeys, and copy
-│   ├── visual-system.md        # CAD-lite dark graphite theme & design tokens
 │   ├── geometry-rules.md       # Dual-coordinate mathematics & collision algorithms
-│   └── qa-report.md            # Acceptance criteria verification matrix (AC-1 to AC-10)
+│   ├── qa-report.md            # Acceptance criteria verification matrix (AC-1 to AC-10)
+│   ├── ux-spec.md              # UX flows, wireframes, keyboard hotkeys, and copy
+│   └── visual-system.md        # CAD-lite dark graphite theme & design tokens
+├── scripts/
+│   └── capture-screenshots.mjs # Automated Puppeteer high-res screenshot capture
 ├── src/
 │   ├── components/
 │   │   ├── BOMBar.tsx          # Persistent bottom telemetry summary bar
@@ -140,12 +177,19 @@ UnderPlan/
 │   ├── bom.test.ts             # BOM aggregation, formatting, and spare tests
 │   ├── geometry.test.ts        # Geometry, footprint, rotation, and collision tests
 │   └── qa-acceptance.test.ts   # End-to-end acceptance tests (AC-1 to AC-10)
+├── LICENSE                     # MIT License
 ├── package.json
 ├── tailwind.config.js
 ├── tsconfig.json
 ├── vite.config.ts
 └── README.md
 ```
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE) - see the [LICENSE](LICENSE) file for details.
 
 ---
 
