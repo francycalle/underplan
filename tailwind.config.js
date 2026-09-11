@@ -8,12 +8,21 @@ export default {
   theme: {
     extend: {
       colors: {
+        cad: {
+          bg: '#0E0F12',
+          surface: '#15161A',
+          card: '#1D1E22',
+          border: '#2A2D36',
+          blue: '#3B82F6',
+          red: '#C80E11',
+          textMuted: '#929394',
+        },
         graphite: {
-          950: '#0C0D0E',
-          900: '#121316',
+          950: '#0E0F12',
+          900: '#15161A',
           850: '#18191E',
           800: '#22242B',
-          700: '#2E313B',
+          700: '#2A2D36',
           600: '#3E4250',
           500: '#5A5F73',
           400: '#8E95AB',
@@ -22,8 +31,8 @@ export default {
           100: '#F1F2F6',
         },
         brand: {
-          primary: '#6366F1', // Indigo
-          hover: '#4F46E5',
+          primary: '#3B82F6', // Vibrant Royal Blue
+          hover: '#2563EB',
           accent: '#38BDF8', // Cyan/Sky
         },
         category: {
@@ -35,7 +44,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       }
     },

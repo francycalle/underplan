@@ -716,31 +716,18 @@ export const Canvas: React.FC<CanvasProps> = ({
     for (let gx = 0; gx < dims.totalHolesX; gx++) {
       const { cx } = gridToSvgHoleCenter(gx, 0);
       const isActive = activeCols.has(gx);
-      const isMajor = (gx + 1) % 8 === 0 || gx === 0;
 
       elements.push(
         <g key={`ghost-ruler-col-${gx}`} className="select-none pointer-events-none">
-          {isActive && (
-            <rect
-              x={cx - 11}
-              y={MARGIN - pitch / 2 - 20}
-              width={22}
-              height={14}
-              rx={4}
-              fill="#1E293B"
-              stroke="#38BDF8"
-              strokeWidth={1}
-            />
-          )}
           <text
             x={cx}
             y={MARGIN - pitch / 2 - 9}
             textAnchor="middle"
             fill={isActive ? '#FFFFFF' : '#64748B'}
-            opacity={isActive ? 1 : isMajor ? 0.75 : 0.35}
-            fontSize={isActive ? 11 : 9.5}
+            opacity={isActive ? 1 : 0.4}
+            fontSize={isActive ? 12 : 9.5}
             fontFamily="JetBrains Mono, monospace"
-            fontWeight={isActive ? 700 : isMajor ? 600 : 400}
+            fontWeight={isActive ? 800 : 500}
           >
             {gx + 1}
           </text>
@@ -752,31 +739,18 @@ export const Canvas: React.FC<CanvasProps> = ({
     for (let gy = 0; gy < dims.totalHolesY; gy++) {
       const { cy } = gridToSvgHoleCenter(0, gy);
       const isActive = activeRows.has(gy);
-      const isMajor = (gy + 1) % 8 === 0 || gy === 0;
 
       elements.push(
         <g key={`ghost-ruler-row-${gy}`} className="select-none pointer-events-none">
-          {isActive && (
-            <rect
-              x={MARGIN - pitch / 2 - 26}
-              y={cy - 7}
-              width={20}
-              height={14}
-              rx={4}
-              fill="#1E293B"
-              stroke="#38BDF8"
-              strokeWidth={1}
-            />
-          )}
           <text
-            x={MARGIN - pitch / 2 - 16}
+            x={MARGIN - pitch / 2 - 14}
             y={cy + 3.5}
             textAnchor="middle"
             fill={isActive ? '#FFFFFF' : '#64748B'}
-            opacity={isActive ? 1 : isMajor ? 0.75 : 0.35}
-            fontSize={isActive ? 11 : 9.5}
+            opacity={isActive ? 1 : 0.4}
+            fontSize={isActive ? 12 : 9.5}
             fontFamily="JetBrains Mono, monospace"
-            fontWeight={isActive ? 700 : isMajor ? 600 : 400}
+            fontWeight={isActive ? 800 : 500}
           >
             {gy + 1}
           </text>
@@ -1476,7 +1450,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative flex-1 h-full w-full bg-graphite-900 overflow-hidden select-none flex flex-col"
+      className="relative flex-1 h-full w-full bg-[#0E0F12] overflow-hidden select-none flex flex-col"
       onWheel={handleWheel}
       onMouseMove={handleMouseMove}
       onMouseDown={handleMouseDown}
@@ -1718,9 +1692,9 @@ export const Canvas: React.FC<CanvasProps> = ({
               y={MARGIN - pitch / 2 - 4}
               width={dims.totalHolesX * pitch + 8}
               height={dims.totalHolesY * pitch + 8}
-              rx={12}
-              fill="#0E1017"
-              stroke="#1E2332"
+              rx={16}
+              fill="#15161A"
+              stroke="#2A2D36"
               strokeWidth={1.5}
             />
 

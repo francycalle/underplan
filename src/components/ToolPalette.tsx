@@ -143,11 +143,11 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
   return (
     <>
       {/* Bottom Center Tool Dock */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto flex items-end gap-4">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto flex items-end gap-3.5">
         {/* Regular Channels Island */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-medium text-slate-400 pl-1 select-none">Regular Channels</span>
-          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#0E1322]/95 border border-slate-800 shadow-2xl backdrop-blur-xl">
+          <span className="text-xs font-semibold text-white pl-1 select-none">Regular Channels</span>
+          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#15161A] border border-[#2A2D36] shadow-2xl backdrop-blur-xl">
             {REGULAR_CHANNELS.map((ch) => {
               const isActive = activeTool === ch.type;
               return (
@@ -157,8 +157,8 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
                   onClick={() => onSelectTool(isActive ? 'select' : ch.type)}
                   className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
                     isActive
-                      ? 'bg-blue-600/20 text-sky-400 border border-sky-500 shadow-[0_0_12px_rgba(56,189,248,0.35)] scale-105'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/70 border border-transparent'
+                      ? 'bg-[#1D1E22] text-[#3B82F6] border-2 border-[#3B82F6] shadow-[0_0_12px_rgba(59,130,246,0.35)] scale-105'
+                      : 'text-[#3B82F6] hover:bg-[#1D1E22] border border-transparent'
                   }`}
                   title={ch.label}
                 >
@@ -171,17 +171,17 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
 
         {/* Custom Channels Island */}
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between pl-1 pr-1">
-            <span className="text-[11px] font-medium text-slate-400 select-none">Custom Channels</span>
+          <div className="flex items-center gap-2 pl-1 pr-1">
+            <span className="text-xs font-semibold text-white select-none">Custom Channels</span>
             <button
               type="button"
               onClick={() => setIsNewAccessoryOpen(true)}
-              className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+              className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#15161A] hover:bg-[#1D1E22] text-white border border-[#2A2D36] transition-colors"
             >
               + New
             </button>
           </div>
-          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#0E1322]/95 border border-slate-800 shadow-2xl backdrop-blur-xl">
+          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#15161A] border border-[#2A2D36] shadow-2xl backdrop-blur-xl">
             {customAccessories.length === 0 ? (
               <div className="px-3 py-2 text-xs text-slate-500 italic">No custom accessories</div>
             ) : (
@@ -195,18 +195,16 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
                       onSelectAccessory?.(acc.id);
                       onSelectTool('accessory');
                     }}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left border transition-all ${
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all ${
                       isActive
-                        ? 'bg-blue-600/20 border-blue-500 text-white shadow-[0_0_12px_rgba(56,189,248,0.25)]'
-                        : 'bg-slate-900/60 border-slate-800/80 text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                        ? 'bg-[#1D1E22] border-2 border-[#3B82F6] text-white shadow-[0_0_12px_rgba(59,130,246,0.25)]'
+                        : 'bg-[#1D1E22]/60 border border-[#2A2D36] text-slate-300 hover:bg-[#1D1E22] hover:text-white'
                     }`}
                   >
-                    <div className="w-5 h-5 rounded-md bg-blue-500/20 border border-blue-400/40 flex items-center justify-center shrink-0">
-                      <div className="w-2 h-2 rounded-sm bg-blue-400" />
-                    </div>
+                    <div className="w-5 h-5 rounded-md bg-[#3B82F6] flex items-center justify-center shrink-0 shadow-sm" />
                     <div>
                       <div className="text-xs font-semibold text-white leading-tight">{acc.name}</div>
-                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                      <div className="text-[10px] font-mono text-[#929394] mt-0.5">
                         ({acc.widthMU}×{acc.heightMU} MU)
                       </div>
                     </div>
@@ -220,11 +218,11 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
 
       {/* Bottom Right Zoom & View Controls */}
       <div className="fixed bottom-6 right-6 z-40 pointer-events-auto flex items-center gap-2">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#0E1322]/95 border border-slate-800 shadow-2xl backdrop-blur-xl text-slate-300 text-xs font-mono">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#15161A] border border-[#2A2D36] shadow-2xl backdrop-blur-xl text-slate-300 text-xs font-mono">
           <button
             type="button"
             onClick={onZoomOut}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#1D1E22] text-slate-400 hover:text-white transition-colors"
             title="Zoom Out"
           >
             <ZoomOut size={14} />
@@ -232,7 +230,7 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
           <button
             type="button"
             onClick={onResetZoom}
-            className="px-2 py-1 rounded-md hover:bg-slate-800 text-white font-semibold transition-colors"
+            className="px-2 py-1 rounded-md hover:bg-[#1D1E22] text-white font-semibold transition-colors"
             title="Reset Zoom to 100%"
           >
             {Math.round(zoom * 100)}%
@@ -240,16 +238,16 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
           <button
             type="button"
             onClick={onZoomIn}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[#1D1E22] text-slate-400 hover:text-white transition-colors"
             title="Zoom In"
           >
             <ZoomIn size={14} />
           </button>
-          <div className="w-[1px] h-4 bg-slate-800 mx-0.5" />
+          <div className="w-[1px] h-4 bg-[#2A2D36] mx-0.5" />
           <button
             type="button"
             onClick={onFitToScreen}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-[#1D1E22] text-slate-300 hover:text-white text-xs font-medium transition-colors"
             title="Fit Board to Screen"
           >
             <Maximize2 size={13} />

@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* My Setup Pill Button */}
             <button
               onClick={() => setIsSetupOpen(true)}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#0E1322]/90 hover:bg-[#141A2D] border border-slate-700/80 shadow-lg text-white font-semibold text-sm transition-all group"
+              className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-[#15161A] hover:bg-[#1D1E22] border border-[#2A2D36] shadow-lg text-white font-semibold text-sm transition-all group"
               title="Click to configure surface dimensions and presets"
             >
               <span className="tracking-tight">{projectTitle}</span>
@@ -100,19 +100,19 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {/* Live Stats Badge */}
-            <div className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-[#0E1322]/90 border border-slate-800 shadow-lg text-xs font-mono text-emerald-400 select-none">
+            <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#15161A] border border-[#2A2D36] shadow-lg text-xs font-mono text-[#4ADE80] select-none">
               <span>{channelCount} channels + {snapCount} snaps</span>
             </div>
           </div>
 
           {/* Categories bar with + New and dropdown */}
-          <div className="flex flex-col gap-2 relative items-start" ref={categoryMenuRef}>
+          <div className="flex flex-col gap-1.5 relative items-start" ref={categoryMenuRef}>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-300">Categories</span>
+              <span className="text-xs font-semibold text-[#929394]">Categories</span>
               <button
                 type="button"
                 onClick={() => setIsNewCategoryOpen(true)}
-                className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition-colors"
+                className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#15161A] hover:bg-[#1D1E22] text-white border border-[#2A2D36] transition-colors"
               >
                 + New
               </button>
@@ -122,12 +122,12 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => setIsCategoryMenuOpen((prev) => !prev)}
-              className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-xl bg-[#0E1322] hover:bg-[#141A2D] border-2 border-blue-500 text-xs text-white font-medium shadow-md transition-all"
+              className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-xl bg-[#15161A] hover:bg-[#1D1E22] border-2 border-[#3B82F6] text-xs text-white font-medium shadow-md transition-all"
             >
               <div className="flex items-center gap-2">
                 <span
                   className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: currentCategory?.color || '#38BDF8' }}
+                  style={{ backgroundColor: currentCategory?.color || '#3B82F6' }}
                 />
                 <span className="font-semibold text-xs tracking-wide">{currentCategory?.name || 'Category'}</span>
               </div>
@@ -136,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Categories Dropdown Popover */}
             {isCategoryMenuOpen && (
-              <div className="absolute top-full left-0 mt-1.5 w-52 rounded-2xl bg-[#0E1322] border border-slate-700/80 shadow-2xl p-1.5 flex flex-col gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute top-full left-0 mt-1.5 w-52 rounded-2xl bg-[#15161A] border border-[#2A2D36] shadow-2xl p-1.5 flex flex-col gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                 {categories.map((cat) => {
                   const isSelected = cat.id === activeCategory;
                   return (
@@ -148,8 +148,8 @@ export const Header: React.FC<HeaderProps> = ({
                       }}
                       className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                         isSelected
-                          ? 'bg-blue-600/20 text-white border border-blue-500/40'
-                          : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                          ? 'bg-[#3B82F6]/20 text-white border border-[#3B82F6]/50'
+                          : 'text-slate-300 hover:bg-[#1D1E22] hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <span>{cat.name}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {isSelected && <Check size={14} className="text-blue-400" />}
+                        {isSelected && <Check size={14} className="text-[#3B82F6]" />}
                         {onDeleteCategory && categories.length > 1 && !['power', 'hdmi'].includes(cat.id) && (
                           <span
                             onClick={(e) => {
@@ -187,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Clear Canvas */}
           <button
             onClick={() => setIsConfirmClearOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg shadow-rose-600/25 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#C80E11] hover:bg-[#B50C0F] text-white text-xs font-semibold shadow-lg transition-all active:scale-95"
             title="Clear all placed channels"
           >
             <Trash2 size={15} />
@@ -197,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* BOM Button */}
           <button
             onClick={onToggleBOMDrawer}
-            className="flex items-center gap-1.5 px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold tracking-wide shadow-lg shadow-blue-500/30 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-5 py-2 rounded-2xl bg-[#3B82F6] hover:bg-[#2563EB] text-white text-xs font-bold tracking-wide shadow-lg shadow-blue-500/30 transition-all active:scale-95"
             title="Open Bill of Materials Drawer"
           >
             <span>BOM</span>
@@ -207,22 +207,22 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative" ref={exportMenuRef}>
             <button
               onClick={() => setIsExportMenuOpen((prev) => !prev)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#0E1322]/90 hover:bg-[#141A2D] border border-slate-700/80 text-white text-xs font-medium shadow-lg transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#15161A] hover:bg-[#1D1E22] border border-[#2A2D36] text-white text-xs font-medium shadow-lg transition-all"
             >
               <span>Export</span>
               <ChevronDown size={14} className="text-slate-400" />
             </button>
 
             {isExportMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 rounded-2xl bg-[#0E1322] border border-slate-700/80 shadow-2xl p-1.5 flex flex-col gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 w-48 rounded-2xl bg-[#15161A] border border-[#2A2D36] shadow-2xl p-1.5 flex flex-col gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <button
                   onClick={() => {
                     onCopyBOM();
                     setIsExportMenuOpen(false);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-[#1D1E22] transition-colors"
                 >
-                  <ClipboardCopy size={14} className="text-sky-400" />
+                  <ClipboardCopy size={14} className="text-[#38BDF8]" />
                   <span>Copy BOM.md</span>
                 </button>
                 <button
@@ -230,9 +230,9 @@ export const Header: React.FC<HeaderProps> = ({
                     onExportCSV();
                     setIsExportMenuOpen(false);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-[#1D1E22] transition-colors"
                 >
-                  <FileSpreadsheet size={14} className="text-emerald-400" />
+                  <FileSpreadsheet size={14} className="text-[#34D399]" />
                   <span>Export CSV</span>
                 </button>
                 {onExportPNG && (
@@ -241,9 +241,9 @@ export const Header: React.FC<HeaderProps> = ({
                       onExportPNG();
                       setIsExportMenuOpen(false);
                     }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-[#1D1E22] transition-colors"
                   >
-                    <Download size={14} className="text-amber-400" />
+                    <Download size={14} className="text-[#FBBF24]" />
                     <span>Download PNG</span>
                   </button>
                 )}
@@ -253,9 +253,9 @@ export const Header: React.FC<HeaderProps> = ({
                       onExportSVG();
                       setIsExportMenuOpen(false);
                     }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:bg-[#1D1E22] transition-colors"
                   >
-                    <Download size={14} className="text-violet-400" />
+                    <Download size={14} className="text-[#A78BFA]" />
                     <span>Download SVG</span>
                   </button>
                 )}
@@ -268,7 +268,7 @@ export const Header: React.FC<HeaderProps> = ({
             href="https://github.com/francycalle/underplan"
             target="_blank"
             rel="noreferrer"
-            className="w-10 h-10 rounded-full bg-[#0E1322]/90 hover:bg-[#141A2D] border border-slate-700/80 shadow-lg flex items-center justify-center text-slate-300 hover:text-white transition-transform hover:scale-105"
+            className="w-10 h-10 rounded-full bg-[#2A2D36] hover:bg-[#343842] border border-[#2A2D36] shadow-lg flex items-center justify-center text-white transition-transform hover:scale-105"
             title="View UnderPlan on GitHub"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -281,7 +281,7 @@ export const Header: React.FC<HeaderProps> = ({
             href="https://www.reddit.com/r/multiboard"
             target="_blank"
             rel="noreferrer"
-            className="w-10 h-10 rounded-full bg-[#0E1322]/90 hover:bg-[#141A2D] border border-slate-700/80 shadow-lg flex items-center justify-center text-[#FF4500] hover:brightness-110 transition-transform hover:scale-105"
+            className="w-10 h-10 rounded-full bg-[#2A2D36] hover:bg-[#343842] border border-[#2A2D36] shadow-lg flex items-center justify-center text-[#FF4500] hover:brightness-110 transition-transform hover:scale-105"
             title="Multiboard Community on Reddit"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

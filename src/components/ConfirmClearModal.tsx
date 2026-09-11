@@ -19,10 +19,10 @@ export const ConfirmClearModal: React.FC<ConfirmClearModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-150">
       <div
-        className="w-full max-w-md rounded-3xl bg-[#0E1320] border border-rose-900/60 shadow-2xl p-6 text-slate-100 flex flex-col gap-5"
+        className="w-full max-w-md rounded-3xl bg-[#15161A] border border-[#2A2D36] shadow-2xl p-6 text-slate-100 flex flex-col gap-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-2 border-b border-[#2A2D36]">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
               <AlertTriangle size={18} />
@@ -31,7 +31,7 @@ export const ConfirmClearModal: React.FC<ConfirmClearModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#1D1E22] transition-colors"
           >
             <X size={16} />
           </button>
@@ -46,7 +46,7 @@ export const ConfirmClearModal: React.FC<ConfirmClearModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors"
+            className="px-4 py-2 rounded-xl bg-[#1D1E22] hover:bg-[#2A2D36] text-slate-300 text-sm font-medium transition-colors"
           >
             Keep Layout
           </button>
@@ -56,7 +56,7 @@ export const ConfirmClearModal: React.FC<ConfirmClearModalProps> = ({
               onConfirm();
               onClose();
             }}
-            className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium shadow-lg shadow-rose-600/30 transition-all flex items-center gap-1.5"
+            className="px-5 py-2 rounded-xl bg-[#C80E11] hover:bg-[#B50C0F] text-white text-sm font-medium shadow-lg transition-all flex items-center gap-1.5"
           >
             <Trash2 size={16} /> Clear Canvas
           </button>

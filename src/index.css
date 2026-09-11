@@ -13,9 +13,9 @@ body {
   margin: 0;
   padding: 0;
   user-select: none;
-  background-color: #121316;
-  color: #E2E8F0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #0E0F12;
+  color: #FFFFFF;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   overflow: hidden;
   height: 100vh;
   width: 100vw;

@@ -105,21 +105,21 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
   return (
     <aside
-      className="fixed top-24 right-6 w-72 z-40 pointer-events-auto rounded-3xl bg-[#0E1322]/95 border border-slate-700/80 shadow-2xl backdrop-blur-xl p-4 text-white flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-150"
+      className="fixed top-24 right-6 w-72 z-40 pointer-events-auto rounded-2xl bg-[#15161A] border border-[#2A2D36] shadow-2xl p-4 text-white flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-150"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Top Header: Title & Close */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+      <div className="flex items-center justify-between pb-1 border-b border-[#2A2D36]">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+          <span className="w-2 h-2 rounded-full bg-[#3B82F6] animate-pulse" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#929394]">
             {isCustom ? selectedChannel.label || 'Custom Accessory' : 'Channel Length (MU)'}
           </h3>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#1D1E22] transition-colors"
             title="Deselect (Esc)"
           >
             <X size={14} />
@@ -130,25 +130,25 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       {/* Length Stepper & Quick Pills (For Straight Channels) */}
       {isStraight && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between bg-slate-900/90 border border-slate-700/80 rounded-xl p-1">
+          <div className="flex items-center justify-between bg-[#15161A] border border-[#2A2D36] rounded-xl p-1">
             <button
               type="button"
               onClick={() => handleSetLength(currentLength - 1)}
-              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-200 font-bold text-sm transition-colors"
+              className="w-8 h-8 rounded-lg bg-[#2A2D36] hover:bg-[#343842] flex items-center justify-center text-white font-bold text-sm transition-colors"
               title="Decrease length"
             >
               -
             </button>
-            <div className="text-center font-mono font-bold text-sm">
+            <div className="text-center font-mono font-bold text-sm text-white">
               {currentLength} MU
-              <span className="text-[10px] text-slate-400 font-normal ml-1">
+              <span className="text-[10px] text-[#929394] font-normal ml-1">
                 ({currentLength * 25}mm)
               </span>
             </div>
             <button
               type="button"
               onClick={() => handleSetLength(currentLength + 1)}
-              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-200 font-bold text-sm transition-colors"
+              className="w-8 h-8 rounded-lg bg-[#2A2D36] hover:bg-[#343842] flex items-center justify-center text-white font-bold text-sm transition-colors"
               title="Increase length"
             >
               +
@@ -165,8 +165,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   onClick={() => handleSetLength(len)}
                   className={`py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
                     isSelected
-                      ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/30'
-                      : 'bg-slate-900/60 hover:bg-slate-800 text-slate-300'
+                      ? 'bg-[#3B82F6] text-white font-bold shadow-md shadow-blue-500/30'
+                      : 'bg-[#15161A] border border-[#2A2D36] hover:bg-[#1D1E22] text-slate-300'
                   }`}
                 >
                   {len}MU
@@ -180,15 +180,15 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       {/* Width (MU) Stepped Line */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-400 font-medium">Width (MU)</span>
+          <span className="text-[#929394] font-medium">Width (MU)</span>
           <span className="font-mono text-slate-300 text-[11px]">{currentWidth} MU</span>
         </div>
         <div className="relative px-2 py-1">
           {/* Track line */}
-          <div className="absolute top-[9px] left-3 right-3 h-[2px] bg-slate-800" />
+          <div className="absolute top-[9px] left-3 right-3 h-[2px] bg-[#2A2D36]" />
           {/* Active track progress */}
           <div
-            className="absolute top-[9px] left-3 h-[2px] bg-blue-500 transition-all"
+            className="absolute top-[9px] left-3 h-[2px] bg-[#3B82F6] transition-all"
             style={{ width: `${((currentWidth - 1) / (WIDTH_OPTIONS.length - 1)) * 100}%` }}
           />
           {/* Dots and Labels */}
@@ -206,15 +206,15 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   <div
                     className={`w-4 h-4 rounded-full flex items-center justify-center transition-all ${
                       isSelected
-                        ? 'bg-blue-600 ring-4 ring-blue-500/20 scale-110'
-                        : 'bg-slate-800 border-2 border-slate-700 group-hover:border-slate-500'
+                        ? 'bg-[#3B82F6] ring-4 ring-blue-500/20 scale-110'
+                        : 'bg-[#15161A] border-2 border-[#2A2D36] group-hover:border-slate-500'
                     }`}
                   >
                     {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                   <span
                     className={`text-[11px] font-mono transition-colors ${
-                      isSelected ? 'text-white font-bold' : 'text-slate-500 group-hover:text-slate-300'
+                      isSelected ? 'text-white font-bold' : 'text-[#929394] group-hover:text-slate-300'
                     }`}
                   >
                     {w}
@@ -228,15 +228,15 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
       {/* Mounting System Dropdown & Edit Points */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-slate-400">Mounting System</span>
+        <span className="text-xs font-medium text-[#929394]">Mounting System</span>
         <div className="relative">
           <select
             value={selectedChannel.mountingType ?? 'threaded_snap'}
             onChange={(e) => handleSetMounting(e.target.value as MountingType)}
-            className="w-full appearance-none px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs font-medium focus:outline-none focus:border-blue-500 pr-8 cursor-pointer"
+            className="w-full appearance-none px-3.5 py-2.5 rounded-xl bg-[#15161A] border border-[#2A2D36] text-white text-xs font-medium focus:outline-none focus:border-[#3B82F6] pr-8 cursor-pointer"
           >
             {MOUNTING_OPTIONS.filter((m) => m.isAvailable).map((opt) => (
-              <option key={opt.id} value={opt.id} className="bg-slate-900 text-white">
+              <option key={opt.id} value={opt.id} className="bg-[#15161A] text-white">
                 {opt.name} ({currentSnapCount} snaps)
               </option>
             ))}
@@ -254,7 +254,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             className={`w-full mt-1 py-2 px-3 rounded-xl border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
               isEditingMounts
                 ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
-                : 'bg-slate-900/60 border-slate-700/80 text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'bg-[#15161A] border-[#2A2D36] text-slate-300 hover:text-white hover:bg-[#1D1E22]'
             }`}
           >
             <Wrench size={13} />
@@ -265,19 +265,19 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
       {/* Category Dropdown */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-slate-400">Category</span>
+        <span className="text-xs font-medium text-[#929394]">Category</span>
         <div className="relative flex items-center">
           <span
             className="absolute left-3.5 w-2.5 h-2.5 rounded-full pointer-events-none z-10"
-            style={{ backgroundColor: categories.find((c) => c.id === selectedChannel.category)?.color || '#38BDF8' }}
+            style={{ backgroundColor: categories.find((c) => c.id === selectedChannel.category)?.color || '#3B82F6' }}
           />
           <select
             value={selectedChannel.category}
             onChange={(e) => handleSetCategory(e.target.value)}
-            className="w-full appearance-none pl-8 pr-8 py-2.5 rounded-xl bg-slate-900 border-2 border-blue-500 text-white text-xs font-medium focus:outline-none pr-8 cursor-pointer"
+            className="w-full appearance-none pl-8 pr-8 py-2.5 rounded-xl bg-[#15161A] border-2 border-[#3B82F6] text-white text-xs font-medium focus:outline-none pr-8 cursor-pointer"
           >
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.id} className="bg-slate-900 text-white">
+              <option key={cat.id} value={cat.id} className="bg-[#15161A] text-white">
                 {cat.name}
               </option>
             ))}
@@ -291,9 +291,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
       {/* Rotation (0°, 90°, 180°, 270°) */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-slate-400 flex items-center justify-between">
+        <span className="text-xs font-medium text-[#929394] flex items-center justify-between">
           <span>Rotation</span>
-          <span className="text-[10px] text-slate-500 font-mono">(Key: R)</span>
+          <span className="text-[10px] text-[#929394] font-mono">(Key: R)</span>
         </span>
         <div className="grid grid-cols-2 gap-1.5">
           {([0, 90, 180, 270] as Rotation[]).map((rot) => {
@@ -305,8 +305,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 onClick={() => handleSetRotation(rot)}
                 className={`py-1.5 rounded-xl text-xs font-mono transition-all ${
                   isSelected
-                    ? 'bg-blue-600/30 border border-blue-500 text-white font-bold'
-                    : 'bg-slate-900/60 border border-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white'
+                    ? 'bg-[#3B82F6]/30 border border-[#3B82F6] text-white font-bold'
+                    : 'bg-[#15161A] border border-[#2A2D36] hover:bg-[#1D1E22] text-slate-400 hover:text-white'
                 }`}
               >
                 {rot}°
@@ -320,7 +320,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       <button
         type="button"
         onClick={() => onDuplicateChannel(selectedChannel)}
-        className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+        className="w-full py-2 px-3 rounded-xl bg-[#15161A] hover:bg-[#1D1E22] border border-[#2A2D36] text-slate-200 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
       >
         <Copy size={14} className="text-slate-400" />
         <span>Duplicate</span>
@@ -330,7 +330,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       <button
         type="button"
         onClick={() => onDeleteChannel(selectedChannel.id)}
-        className="w-full py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg shadow-rose-600/25 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+        className="w-full py-2.5 px-3 rounded-xl bg-[#C80E11] hover:bg-[#B50C0F] text-white text-xs font-semibold shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-95"
       >
         <Trash2 size={15} />
         <span>Delete Channel</span>

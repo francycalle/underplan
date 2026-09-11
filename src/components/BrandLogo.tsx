@@ -8,7 +8,7 @@ interface BrandLogoProps {
 export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 44 }) => {
   return (
     <div
-      className={`relative flex items-center justify-center rounded-full bg-[#0E1322] border border-slate-700/80 shadow-lg select-none transition-transform hover:scale-105 ${className}`}
+      className={`relative flex items-center justify-center rounded-full bg-[#15161A] border border-[#2A2D36] shadow-lg select-none transition-transform hover:scale-105 ${className}`}
       style={{ width: size, height: size }}
       title="UnderPlan — Multiboard & Underware Planner"
     >
@@ -22,7 +22,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 44 
         {/* Subtle Outer Octagon Guide */}
         <polygon
           points="10,2 26,2 34,10 34,26 26,34 10,34 2,26 2,10"
-          stroke="#38BDF8"
+          stroke="#3B82F6"
           strokeWidth="1.2"
           strokeDasharray="2 2"
           opacity="0.25"
@@ -32,7 +32,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 44 
         {/* Conduit U-Shape Path */}
         <path
           d="M10 9 V21 C10 25.4183 13.5817 29 18 29 C22.4183 29 26 25.4183 26 21 V9"
-          stroke="#38BDF8"
+          stroke="#3B82F6"
           strokeWidth="3.5"
           strokeLinecap="round"
           strokeLinejoin="round"
