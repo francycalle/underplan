@@ -1,16 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  Ruler,
-  Target,
-  RotateCcw,
-  Check,
-  X,
-  Download,
-  Image as ImageIcon
-} from 'lucide-react';
+import { Target, RotateCcw, Check, Ruler, X } from 'lucide-react';
 import {
   BoardConfig,
   PlacedChannel,
@@ -31,14 +20,12 @@ import {
   worldToGrid,
   getMultiboardOctagonPoints,
   measurePointsAndSuggestChannel,
-  fitBoardToViewport,
   getChannelSnapCount,
   getCurvedChannelGeometry,
   getYBranchChannelGeometry,
   getChannelOutlinePath,
   getDiagonalChannelGeometry,
 } from '../lib/geometry';
-import { exportSvgAsPng, exportSvgDirect } from '../lib/exportMap';
 import { channelColors } from '../styles/tokens';
 import { ToolType } from './ToolPalette';
 
@@ -68,6 +55,10 @@ interface CanvasProps {
   customAccessories?: CustomAccessoryDefinition[];
   activeAccessoryId?: string | null;
   svgRefProp?: React.RefObject<SVGSVGElement>;
+  zoom?: number;
+  onZoomChange?: (z: number) => void;
+  pan?: { x: number; y: number };
+  onPanChange?: (p: { x: number; y: number }) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -96,14 +87,40 @@ export const Canvas: React.FC<CanvasProps> = ({
   customAccessories = [],
   activeAccessoryId,
   svgRefProp,
+  zoom: controlledZoom,
+  onZoomChange,
+  pan: controlledPan,
+  onPanChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const internalSvgRef = useRef<SVGSVGElement>(null);
   const svgRef = svgRefProp || internalSvgRef;
 
   // Pan & Zoom state
-  const [zoom, setZoom] = useState(1.2);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 60, y: 50 });
+  const [internalZoom, setInternalZoom] = useState(1.0);
+  const [internalPan, setInternalPan] = useState<{ x: number; y: number }>({ x: 80, y: 70 });
+
+  const zoom = controlledZoom !== undefined ? controlledZoom : internalZoom;
+  const pan = controlledPan !== undefined ? controlledPan : internalPan;
+
+  const setZoom = useCallback(
+    (updater: number | ((prev: number) => number)) => {
+      const next = typeof updater === 'function' ? updater(zoom) : updater;
+      setInternalZoom(next);
+      onZoomChange?.(next);
+    },
+    [zoom, onZoomChange]
+  );
+
+  const setPan = useCallback(
+    (updater: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => {
+      const next = typeof updater === 'function' ? updater(pan) : updater;
+      setInternalPan(next);
+      onPanChange?.(next);
+    },
+    [pan, onPanChange]
+  );
+
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -178,16 +195,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     [MARGIN, pitch]
   );
 
-  // Auto-fit Board to Viewport
-  const handleFitToViewport = useCallback(() => {
-    if (!containerRef.current) return;
-    const { clientWidth, clientHeight } = containerRef.current;
-    if (clientWidth <= 0 || clientHeight <= 0) return;
-    const fit = fitBoardToViewport(boardConfig, clientWidth, clientHeight);
-    setZoom(fit.zoom);
-    setPan(fit.pan);
-  }, [boardConfig]);
-
   // Keyboard Shortcuts: R to rotate, Delete to delete, Esc to cancel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -252,14 +259,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     onResetTool,
     onToggleMountEdit,
   ]);
-
-  // Zoom controls
-  const handleZoomIn = () => setZoom((z) => Math.min(3.5, Number((z + 0.2).toFixed(2))));
-  const handleZoomOut = () => setZoom((z) => Math.max(0.3, Number((z - 0.2).toFixed(2))));
-  const handleResetZoom = () => {
-    setZoom(1.0);
-    setPan({ x: 50, y: 50 });
-  };
 
   // Mouse wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
@@ -689,211 +688,103 @@ export const Canvas: React.FC<CanvasProps> = ({
     return borders;
   };
 
-  // Render Viewport-Anchored CAD Rulers (Adobe Illustrator Style)
-  const renderViewportRulers = () => {
-    const RULER_SIZE = 44; // thickness in pixels (expanded 2X for high clarity)
-    const muPitchPx = pitch * zoom;
+  // Render Ghost CAD Rulers directly into SVG World Coordinates with Spotlight
+  const renderGhostRulers = () => {
+    const elements: React.ReactNode[] = [];
+    const selectedChannel = channels.find((c) => c.id === selectedChannelId);
+    const selectedFootprint = selectedChannel ? getChannelFootprint(selectedChannel) : null;
 
-    // Step logic to avoid overlapping labels at low zoom
-    let labelStep = 1;
-    if (muPitchPx < 18) {
-      labelStep = boardConfig.tileWidthHoles || 8;
-    } else if (muPitchPx < 32) {
-      labelStep = 4;
-    } else if (muPitchPx < 48) {
-      labelStep = 2;
+    // Determine active spotlight columns & rows from hover and selection
+    const activeCols = new Set<number>();
+    const activeRows = new Set<number>();
+
+    if (hoverGridPoint && hoverGridPoint.x >= 0 && hoverGridPoint.x < dims.totalHolesX) {
+      activeCols.add(hoverGridPoint.x);
+    }
+    if (hoverGridPoint && hoverGridPoint.y >= 0 && hoverGridPoint.y < dims.totalHolesY) {
+      activeRows.add(hoverGridPoint.y);
     }
 
-    const cursorX = hoverGridPoint?.x;
-    const cursorY = hoverGridPoint?.y;
+    if (selectedFootprint) {
+      selectedFootprint.cells.forEach((cell) => {
+        if (cell.x >= 0 && cell.x < dims.totalHolesX) activeCols.add(cell.x);
+        if (cell.y >= 0 && cell.y < dims.totalHolesY) activeRows.add(cell.y);
+      });
+    }
 
-    const xTicks: React.ReactNode[] = [];
-    for (let x = 0; x < dims.totalHolesX; x++) {
-      const screenX = pan.x + (MARGIN + x * pitch) * zoom;
-      if (screenX < RULER_SIZE - 10 || screenX > 3840) continue;
+    // Top Column Numbers (1 to dims.totalHolesX)
+    for (let gx = 0; gx < dims.totalHolesX; gx++) {
+      const { cx } = gridToSvgHoleCenter(gx, 0);
+      const isActive = activeCols.has(gx);
+      const isMajor = (gx + 1) % 8 === 0 || gx === 0;
 
-      const isMajor = x % (boardConfig.tileWidthHoles || 8) === 0 || x === dims.totalHolesX - 1;
-      const isMid = x % 4 === 0;
-      const isCursor = cursorX === x;
-      const shouldLabel = isMajor || (x % labelStep === 0);
-
-      xTicks.push(
-        <g key={`vp-ruler-x-${x}`}>
-          <line
-            x1={screenX}
-            y1={isMajor ? 24 : isMid ? 30 : 36}
-            x2={screenX}
-            y2={RULER_SIZE}
-            stroke={isCursor ? '#38BDF8' : isMajor ? '#94A3B8' : isMid ? '#64748B' : '#334155'}
-            strokeWidth={isCursor ? 1.8 : isMajor ? 1.2 : 0.75}
-          />
-          {shouldLabel && !isCursor && screenX >= RULER_SIZE + 10 && (
-            <text
-              x={screenX}
-              y={16}
-              textAnchor="middle"
-              fill={isMajor ? '#F1F5F9' : '#94A3B8'}
-              fontSize={12}
-              fontFamily="JetBrains Mono, monospace"
-              fontWeight={isMajor ? 700 : 500}
-            >
-              {x + 1}
-            </text>
+      elements.push(
+        <g key={`ghost-ruler-col-${gx}`} className="select-none pointer-events-none">
+          {isActive && (
+            <rect
+              x={cx - 11}
+              y={MARGIN - pitch / 2 - 20}
+              width={22}
+              height={14}
+              rx={4}
+              fill="#1E293B"
+              stroke="#38BDF8"
+              strokeWidth={1}
+            />
           )}
+          <text
+            x={cx}
+            y={MARGIN - pitch / 2 - 9}
+            textAnchor="middle"
+            fill={isActive ? '#FFFFFF' : '#64748B'}
+            opacity={isActive ? 1 : isMajor ? 0.75 : 0.35}
+            fontSize={isActive ? 11 : 9.5}
+            fontFamily="JetBrains Mono, monospace"
+            fontWeight={isActive ? 700 : isMajor ? 600 : 400}
+          >
+            {gx + 1}
+          </text>
         </g>
       );
     }
 
-    const yTicks: React.ReactNode[] = [];
-    for (let y = 0; y < dims.totalHolesY; y++) {
-      const screenY = pan.y + (MARGIN + y * pitch) * zoom;
-      if (screenY < RULER_SIZE - 10 || screenY > 3840) continue;
+    // Left Row Numbers (1 to dims.totalHolesY)
+    for (let gy = 0; gy < dims.totalHolesY; gy++) {
+      const { cy } = gridToSvgHoleCenter(0, gy);
+      const isActive = activeRows.has(gy);
+      const isMajor = (gy + 1) % 8 === 0 || gy === 0;
 
-      const isMajor = y % (boardConfig.tileHeightHoles || 8) === 0 || y === dims.totalHolesY - 1;
-      const isMid = y % 4 === 0;
-      const isCursor = cursorY === y;
-      const shouldLabel = isMajor || (y % labelStep === 0);
-
-      yTicks.push(
-        <g key={`vp-ruler-y-${y}`}>
-          <line
-            x1={isMajor ? 24 : isMid ? 30 : 36}
-            y1={screenY}
-            x2={RULER_SIZE}
-            y2={screenY}
-            stroke={isCursor ? '#38BDF8' : isMajor ? '#94A3B8' : isMid ? '#64748B' : '#334155'}
-            strokeWidth={isCursor ? 1.8 : isMajor ? 1.2 : 0.75}
-          />
-          {shouldLabel && !isCursor && screenY >= RULER_SIZE + 10 && (
-            <text
-              x={22}
-              y={screenY + 4}
-              textAnchor="end"
-              fill={isMajor ? '#F1F5F9' : '#94A3B8'}
-              fontSize={12}
-              fontFamily="JetBrains Mono, monospace"
-              fontWeight={isMajor ? 700 : 500}
-            >
-              {y + 1}
-            </text>
+      elements.push(
+        <g key={`ghost-ruler-row-${gy}`} className="select-none pointer-events-none">
+          {isActive && (
+            <rect
+              x={MARGIN - pitch / 2 - 26}
+              y={cy - 7}
+              width={20}
+              height={14}
+              rx={4}
+              fill="#1E293B"
+              stroke="#38BDF8"
+              strokeWidth={1}
+            />
           )}
+          <text
+            x={MARGIN - pitch / 2 - 16}
+            y={cy + 3.5}
+            textAnchor="middle"
+            fill={isActive ? '#FFFFFF' : '#64748B'}
+            opacity={isActive ? 1 : isMajor ? 0.75 : 0.35}
+            fontSize={isActive ? 11 : 9.5}
+            fontFamily="JetBrains Mono, monospace"
+            fontWeight={isActive ? 700 : isMajor ? 600 : 400}
+          >
+            {gy + 1}
+          </text>
         </g>
       );
     }
 
-    const cursorScreenX = hoverGridPoint ? pan.x + (MARGIN + hoverGridPoint.x * pitch) * zoom : null;
-    const cursorScreenY = hoverGridPoint ? pan.y + (MARGIN + hoverGridPoint.y * pitch) * zoom : null;
-
-    return (
-      <>
-        {/* Top-Left Corner Origin Block (MU) */}
-        <div
-          className="absolute top-0 left-0 w-[44px] h-[44px] z-30 bg-graphite-950 border-r border-b border-graphite-700/80 flex items-center justify-center pointer-events-none select-none shadow-sm"
-          title="Unit: Multiboard Unit (1 MU = 25mm)"
-        >
-          <span className="font-mono text-[12px] font-bold text-brand-accent">MU</span>
-        </div>
-
-        {/* Top Viewport Ruler */}
-        <div className="absolute top-0 left-0 right-0 h-[44px] z-20 pointer-events-none select-none overflow-hidden bg-graphite-950/90 border-b border-graphite-700/80 backdrop-blur-sm">
-          <svg className="w-full h-full" style={{ overflow: 'visible' }}>
-            {xTicks}
-            {cursorScreenX !== null && cursorScreenX >= RULER_SIZE + 6 && hoverGridPoint && (() => {
-              const text = String(hoverGridPoint.x + 1);
-              const pillW = Math.max(24, text.length * 8 + 12);
-              const pillX = Math.max(RULER_SIZE + 2, cursorScreenX - pillW / 2);
-              const textX = pillX + pillW / 2;
-              return (
-                <g key="active-cursor-pill-x">
-                  {/* Active Coordinate Highlight Pill */}
-                  <rect
-                    x={pillX}
-                    y={3}
-                    width={pillW}
-                    height={19}
-                    rx={4}
-                    fill="#0284C7"
-                    stroke="#38BDF8"
-                    strokeWidth={1.2}
-                    className="filter drop-shadow-md"
-                  />
-                  <text
-                    x={textX}
-                    y={17}
-                    textAnchor="middle"
-                    fill="#FFFFFF"
-                    fontSize={12}
-                    fontFamily="JetBrains Mono, monospace"
-                    fontWeight={700}
-                  >
-                    {text}
-                  </text>
-                  {/* Indicator Line to Grid (Starts below the pill, never obscuring text) */}
-                  <line
-                    x1={cursorScreenX}
-                    y1={23}
-                    x2={cursorScreenX}
-                    y2={RULER_SIZE}
-                    stroke="#38BDF8"
-                    strokeWidth={2}
-                  />
-                </g>
-              );
-            })()}
-          </svg>
-        </div>
-
-        {/* Left Viewport Ruler */}
-        <div className="absolute top-0 left-0 bottom-0 w-[44px] z-20 pointer-events-none select-none overflow-hidden bg-graphite-950/90 border-r border-graphite-700/80 backdrop-blur-sm">
-          <svg className="w-full h-full" style={{ overflow: 'visible' }}>
-            {yTicks}
-            {cursorScreenY !== null && cursorScreenY >= RULER_SIZE + 6 && hoverGridPoint && (() => {
-              const text = String(hoverGridPoint.y + 1);
-              const pillW = Math.max(22, text.length * 8 + 8);
-              const pillY = Math.max(RULER_SIZE + 2, cursorScreenY - 10);
-              const textY = pillY + 14;
-              const lineStartX = Math.min(RULER_SIZE - 4, 3 + pillW + 2);
-              return (
-                <g key="active-cursor-pill-y">
-                  {/* Active Coordinate Highlight Pill */}
-                  <rect
-                    x={2}
-                    y={pillY}
-                    width={pillW}
-                    height={19}
-                    rx={4}
-                    fill="#0284C7"
-                    stroke="#38BDF8"
-                    strokeWidth={1.2}
-                    className="filter drop-shadow-md"
-                  />
-                  <text
-                    x={2 + pillW / 2}
-                    y={textY}
-                    textAnchor="middle"
-                    fill="#FFFFFF"
-                    fontSize={12}
-                    fontFamily="JetBrains Mono, monospace"
-                    fontWeight={700}
-                  >
-                    {text}
-                  </text>
-                  {/* Indicator Line to Grid (Starts to the right of the pill, never obscuring text) */}
-                  <line
-                    x1={lineStartX}
-                    y1={cursorScreenY}
-                    x2={RULER_SIZE}
-                    y2={cursorScreenY}
-                    stroke="#38BDF8"
-                    strokeWidth={2}
-                  />
-                </g>
-              );
-            })()}
-          </svg>
-        </div>
-      </>
-    );
+    return <g id="ghost-rulers">{elements}</g>;
   };
 
   // Render Mount Point Editing Overlay for the selected channel
@@ -1430,52 +1321,6 @@ export const Canvas: React.FC<CanvasProps> = ({
                     strokeDasharray="4 3"
                     className="animate-pulse"
                   />
-                  <g transform={`translate(${bx + bw / 2}, ${by - 12})`}>
-                    {/* Rotate Button */}
-                    <g
-                      className="cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const nextRot = (((channel.rotation + 90) % 360) as Rotation);
-                        onUpdateChannel({ ...channel, rotation: nextRot });
-                      }}
-                    >
-                      <circle cx={-12} cy={-2} r={8} fill="#22242B" stroke="#38BDF8" strokeWidth={1} />
-                      <text
-                        x={-12}
-                        y={1.5}
-                        textAnchor="middle"
-                        fill="#38BDF8"
-                        fontSize={8}
-                        fontFamily="sans-serif"
-                        fontWeight="bold"
-                      >
-                        ↻
-                      </text>
-                    </g>
-
-                    {/* Delete Button */}
-                    <g
-                      className="cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteChannel(channel.id);
-                      }}
-                    >
-                      <circle cx={12} cy={-2} r={8} fill="#22242B" stroke="#EF4444" strokeWidth={1} />
-                      <text
-                        x={12}
-                        y={1.5}
-                        textAnchor="middle"
-                        fill="#EF4444"
-                        fontSize={8}
-                        fontFamily="sans-serif"
-                        fontWeight="bold"
-                      >
-                        ✕
-                      </text>
-                    </g>
-                  </g>
                 </>
               );
             })()}
@@ -1636,76 +1481,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       onMouseMove={handleMouseMove}
       onMouseDown={handleMouseDown}
     >
-      {/* Viewport-Anchored CAD Rulers (Adobe Illustrator Style) */}
-      {renderViewportRulers()}
 
-      {/* Floating Canvas HUD (Bottom-Right): Zoom, Fit & Quick Export Controls */}
-      <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1.5 rounded-lg border border-graphite-600 bg-graphite-850/90 p-1 shadow-lg backdrop-blur-md">
-        <button
-          onClick={handleZoomOut}
-          className="rounded p-1.5 text-slate-300 hover:bg-graphite-700 hover:text-white transition-colors"
-          title="Zoom Out"
-        >
-          <ZoomOut className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={handleResetZoom}
-          className="min-w-[48px] text-center font-mono text-xs font-semibold text-slate-300 hover:text-white"
-          title="Reset zoom to 100%"
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-
-        <button
-          onClick={handleZoomIn}
-          className="rounded p-1.5 text-slate-300 hover:bg-graphite-700 hover:text-white transition-colors"
-          title="Zoom In"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </button>
-
-        <div className="h-4 w-[1px] bg-graphite-700 mx-0.5" />
-
-        <button
-          onClick={handleFitToViewport}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-slate-300 hover:bg-graphite-700 hover:text-white transition-colors"
-          title="Fit board to viewport"
-        >
-          <Maximize2 className="h-3.5 w-3.5 text-brand-accent" />
-          <span>Fit</span>
-        </button>
-
-        <div className="h-4 w-[1px] bg-graphite-700 mx-0.5" />
-
-        <button
-          onClick={async () => {
-            if (!svgRef.current) return;
-            try {
-              await exportSvgAsPng(svgRef.current);
-            } catch (err) {
-              console.error(err);
-            }
-          }}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-slate-300 hover:bg-graphite-700 hover:text-white transition-colors"
-          title="Export map as PNG (Retina 2x)"
-        >
-          <ImageIcon className="h-3.5 w-3.5 text-emerald-400" />
-          <span>PNG</span>
-        </button>
-
-        <button
-          onClick={() => {
-            if (!svgRef.current) return;
-            exportSvgDirect(svgRef.current);
-          }}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-slate-300 hover:bg-graphite-700 hover:text-white transition-colors"
-          title="Export map as vector SVG"
-        >
-          <Download className="h-3.5 w-3.5 text-cyan-400" />
-          <span>SVG</span>
-        </button>
-      </div>
 
       {/* Mount Edit Mode Floating Top HUD */}
       {isEditingMounts && selectedChannelForEdit && (
@@ -1942,11 +1718,14 @@ export const Canvas: React.FC<CanvasProps> = ({
               y={MARGIN - pitch / 2 - 4}
               width={dims.totalHolesX * pitch + 8}
               height={dims.totalHolesY * pitch + 8}
-              rx={10}
-              fill="#15161A"
-              stroke="#2A2D36"
+              rx={12}
+              fill="#0E1017"
+              stroke="#1E2332"
               strokeWidth={1.5}
             />
+
+            {/* Ghost CAD Rulers with active coordinate spotlight */}
+            {renderGhostRulers()}
 
             {/* Multiboard Tile Boundaries */}
             {renderTileBoundaries()}
