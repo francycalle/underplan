@@ -4,10 +4,10 @@
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-72%2F72%20Passing-emerald)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-105%2F105%20Passing-emerald)](tests/)
 
 > **Plan your Underware cable-management layout before you print.**  
-> A fast, polished visual planning tool for Underware 2.0 cable channels mounted on KeepMaking Multiboard pegboard grids, featuring automatic snap connector tallying and Bill of Materials (BOM) generation.
+> A fast, polished visual 2D CAD planning tool for Underware 2.0 cable channels mounted on **KeepMaking Multiboard (25mm)** and **openGrid (28mm)** pegboard grids, featuring automated snap connector tallying and Bill of Materials (BOM) generation.
 
 ![Underplan Interactive Workspace Overview](docs/screenshots/01-overview.png)
 
@@ -15,12 +15,12 @@
 
 ## 🌟 Overview
 
-**Underplan** is an interactive, CAD-lite design prototype built for makers, desk-setup enthusiasts, and 3D printing hobbyists. Mounting Underware cable raceways under a desk requires knowing the exact combination of channel segments, turns, and snap connectors needed to fit the Multiboard tile layout. 
+**Underplan** is an interactive, CAD-lite design application built for makers, desk-setup enthusiasts, and 3D printing hobbyists. Routing Underware cable raceways under a desk, shelf, or enclosure requires knowing the exact combination of channel segments, turns, and snap connectors needed to fit the underlying grid layout. 
 
 Underplan solves this by providing:
-1. **Interactive SVG Top-Down Planner:** Drag, drop, snap, and rotate modular Underware channels onto a 25mm Multiboard octagonal pegboard grid.
+1. **Interactive SVG Top-Down Planner:** Drag, drop, snap, and rotate modular Underware channels onto a 25mm Multiboard or 28mm openGrid coordinate matrix.
 2. **Real-time Geometric Validation:** Instant visual feedback detecting channel collisions (red highlight) and out-of-bounds positioning (amber halo).
-3. **Automated Bill of Materials (BOM):** Dynamically tallies Multiboard tiles, channel parts by type and length, and computes required snap fasteners—including an automatic **+10% spare allowance** (rounded up) to cover 3D print defects or snap wear.
+3. **Automated Bill of Materials (BOM):** Dynamically tallies tiles, channel parts by family, length, and radius, and computes required snap fasteners—including an automatic **+10% spare allowance** (rounded up) to cover 3D print defects or snap wear.
 4. **Export & Sharing:** One-click CSV download (RFC-4180 compliant) and Markdown clipboard copy for forum posts, slicer queues, and hardware inventory.
 
 ---
@@ -46,7 +46,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser to start pla
 ```bash
 npm test
 ```
-Executes the native test suite covering geometry math, discrete rotations, collision algorithms, snap tallying, and acceptance criteria (72/72 passing tests).
+Executes the native test suite covering geometry math, discrete rotations, collision algorithms, snap tallying, and acceptance criteria (105/105 passing tests).
 
 ### 4. Build for Production
 ```bash
@@ -66,35 +66,36 @@ Uses Puppeteer and headless Chrome to generate Retina-quality screenshots of the
 
 | Feature | Description |
 | :--- | :--- |
-| **Multiboard Grid Configuration** | Customize board matrix dimensions (e.g. 6×3 = 18 tiles = 48×24 holes = 1200×600mm) with live millimeter and hole telemetry. |
-| **Modular Channel Library** | Select from Straight channels (`I-2`, `I-3`, `I-4`), 90° Corner Turns (`L-Turn`), 3-way `T-Junctions`, and 4-way `Cross` channels. |
-| **Interactive Canvas** | Top-down SVG viewport featuring KeepMaking-style octagonal snap holes, live grid-snapping (25mm), ghost placement preview, channel selection, drag-and-drop repositioning, and inline rotation controls. |
-| **Zoom & Pan Controls** | Smooth canvas navigation with dedicated Zoom In/Out, Reset Zoom (100%), and keyboard hotkeys (`+` / `-` / `0` / `Space`+drag / Wheel). |
+| **Dual Grid Platforms** | Full native support for both **KeepMaking Multiboard (25mm pitch)** and **openGrid (28mm pitch)** ecosystems. |
+| **Surface Setup & Blueprint Matrix** | Configure custom mounting surface dimensions (width × height in mm), choose tile sizes, and preview the partitioned print-bed tile matrix in real time. |
+| **Comprehensive Channel Family** | Straight channels (lengths 1–16 units, widths 1–5 units), 90° Elbows, Smooth Radial Curves (R2–R5), 3-Way T-Junctions, 45° Y-Split Branches, 4-Way Crosses, Mitred corners, and Jog diagonals. |
+| **Modular Accessories & Blocks** | Place and route around custom modular gear including Cable Loop Max, Underware Cable Spools, and Tessan Multi-Socket Holders. |
+| **Interactive CAD Canvas** | Top-down SVG viewport featuring authentic octagonal/square snap holes, live grid-snapping, ghost placement preview, channel selection, drag-and-drop repositioning, and inline rotation controls. |
+| **Zoom & Pan Controls** | Smooth canvas navigation with dedicated Zoom In/Out, Auto-Fit Central Board, and keyboard hotkeys (`+` / `-` / `0` / `Space`+drag / Wheel). |
 | **Functional Cable Color Encoding** | Color-code cable pathways by functional category: **Power** (Amber), **Data / USB** (Cyan), **Video / DP** (Purple), **Network / Eth** (Emerald), and **Neutral** (Slate). |
-| **Collision & Bounds Validation** | Dual-stage collision engine (AABB broadphase + grid-cell set narrowphase) that detects overlaps with pulsed red warning halos and boundary overshoots with amber halos. |
-| **Live Bill of Materials (BOM)** | Persistent bottom telemetry bar and expandable modal drawer detailing required tiles, channel parts, and snap fasteners. |
+| **Collision & Bounds Validation** | Dual-stage collision engine (AABB broadphase + grid-cell set narrowphase) detecting overlaps with pulsed red warning halos and boundary overshoots with amber halos. |
+| **Live Bill of Materials (BOM)** | Persistent header telemetry and slide-out modal drawer detailing required tiles, channel parts, and snap fasteners. |
 | **Smart Spare Snap Policy** | Automatically calculates snap connectors per segment type and applies a configurable **+10% spare rate** (rounded up) for printing safety. |
-| **One-Click Export** | Download RFC-4180 standard CSV files or copy formatted Markdown specifications directly to the clipboard with toast feedback. |
-| **Curated Demo Layout** | One-click "Load Demo" button loads a realistic under-desk dual-tier cable routing plan demonstrating high-voltage/low-voltage separation. |
+| **One-Click Export** | Download RFC-4180 standard CSV files or copy formatted Markdown specifications directly to the clipboard. |
 
 ---
 
 ## 📸 Interface & Workflow Gallery
 
 ### 1. CAD-Lite Planning Canvas & Overview
-Full dark graphite workspace with Multiboard 25mm octagonal pegboard grid, KeepMaking tile matrices, and functional color-coded cable pathways (Power, Data, Video, Network).
+Full dark workspace with Multiboard/openGrid grids, floating channel docks, and functional color-coded cable pathways (Power, Data, Video, Network).
 ![Underplan Interactive Workspace Overview](docs/screenshots/01-overview.png)
 
 ### 2. Contextual Channel Inspector & Parametric Sizing
-Select any placed conduit to inspect physical dimensions (1 MU = 25mm), change 90° discrete rotations, tune parametric lengths (1–16 MU), configure mounting hardware, or edit manual snap anchors.
+Select any placed conduit to inspect physical dimensions (1 MU = 25mm / 1 OU = 28mm), change 90° discrete rotations, tune parametric lengths, configure mounting hardware, or edit manual snap anchors.
 ![Contextual Channel Inspector](docs/screenshots/02-channel-inspector.png)
 
-### 3. Modular Underware 2.0 Catalog & Category Palette
-Left tool palette providing direct access to Straight channels, Elbow turns, Radial curves (R2–R5), T-Junctions, Y-Branches, Crosses, Mitred corners, and modular accessories (Cable Spool, Multi-Socket Holder).
-![Modular Underware 2.0 Channel Library](docs/screenshots/03-channel-palette.png)
+### 3. Surface & Grid Setup Configurator
+Switch seamlessly between KeepMaking Multiboard (25mm) and openGrid (28mm), customize mounting dimensions, and preview the tile matrix blueprint.
+![Surface & Grid Setup Configurator](docs/screenshots/03-grid-setup.png)
 
 ### 4. Real-Time Bill of Materials (BOM) & Hardware Calculator
-Interactive modal detailing exact 3D print part tallies, Multiboard tile counts, and snap fastener counts with an automatic +10% spare safety margin. Export to CSV or copy to clipboard as Markdown in one click.
+Interactive modal detailing exact 3D print part tallies, tile counts, and snap fastener counts with an automatic +10% spare safety margin. Export to CSV or copy to clipboard as Markdown in one click.
 ![Bill of Materials Modal](docs/screenshots/04-bom-modal.png)
 
 ---
