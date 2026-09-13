@@ -1804,11 +1804,11 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Exact Reddit Button: circle cx=1865.38, cy=53.59, r=22.68, fill=#2A2D36 */}
           <a
-            href="https://www.reddit.com/r/multiboard"
+            href="https://www.reddit.com/user/francycalle/submitted/"
             target="_blank"
             rel="noreferrer"
             className="w-[45.4px] h-[45.4px] rounded-full bg-[#2A2D36] hover:bg-[#343842] flex items-center justify-center text-white shadow-xl transition-transform hover:scale-105"
-            title="Multiboard Community on Reddit"
+            title="Reddit Posts by u/francycalle"
           >
             <svg width="45.4" height="45.4" viewBox="1842.7 30.91 45.36 45.36" fill="none">
               <circle cx="1865.38" cy="53.5919" r="22.68" fill="#2A2D36" />
