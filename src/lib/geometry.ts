@@ -2702,9 +2702,11 @@ export function fitBoardToViewport(
   const boardWidthPx = dims.totalHolesX * pitch;
   const boardHeightPx = dims.totalHolesY * pitch;
 
-  const padding = 120;
-  const availW = Math.max(200, viewportWidth - padding);
-  const availH = Math.max(200, viewportHeight - padding);
+  // Leave comfortable margins for floating header (top) and tool docks (bottom/edges)
+  const paddingX = 140;
+  const paddingY = 220;
+  const availW = Math.max(200, viewportWidth - paddingX);
+  const availH = Math.max(200, viewportHeight - paddingY);
 
   const scaleX = availW / boardWidthPx;
   const scaleY = availH / boardHeightPx;
@@ -2714,8 +2716,11 @@ export function fitBoardToViewport(
   const scaledW = boardWidthPx * zoom;
   const scaledH = boardHeightPx * zoom;
 
-  const panX = Math.round((viewportWidth - scaledW) / 2 - 50 * zoom);
-  const panY = Math.round((viewportHeight - scaledH) / 2 - 50 * zoom);
+  // Board center in SVG coordinates is approx (boardWidthPx/2 + 15, boardHeightPx/2 + 15)
+  // accounting for MARGIN (30) and ghost rulers (~24px on top/left)
+  const offset = 15 * zoom;
+  const panX = Math.round((viewportWidth - scaledW) / 2 - offset);
+  const panY = Math.round((viewportHeight - scaledH) / 2 - offset);
 
   return { zoom, pan: { x: panX, y: panY } };
 }

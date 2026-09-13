@@ -173,9 +173,34 @@ export default function App() {
   const [yTrunkUnits, setYTrunkUnits] = useState<number>(1);
   const [yBranchUnits, setYBranchUnits] = useState<number>(1);
 
-  // Pan & Zoom state centered for viewport
-  const [zoom, setZoom] = useState<number>(1.0);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 260, y: 160 });
+  // Pan & Zoom state: initialized fitted to screen
+  const [zoom, setZoom] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const fit = fitBoardToViewport(boardConfig, window.innerWidth, window.innerHeight);
+        return fit.zoom;
+      } catch {}
+    }
+    return 1.0;
+  });
+  const [pan, setPan] = useState<{ x: number; y: number }>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const fit = fitBoardToViewport(boardConfig, window.innerWidth, window.innerHeight);
+        return fit.pan;
+      } catch {}
+    }
+    return { x: 260, y: 160 };
+  });
+
+  // Auto-fit to screen on initial mount once viewport size is stable
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const fit = fitBoardToViewport(boardConfig, window.innerWidth, window.innerHeight);
+      setZoom(fit.zoom);
+      setPan(fit.pan);
+    }
+  }, []);
 
   // BOM Drawer and Toast state
   const [isBOMOpen, setIsBOMOpen] = useState(false);
@@ -416,6 +441,11 @@ export default function App() {
     setActiveTool('select');
     setIsEditingMounts(false);
     setPlacementCategory(null);
+    if (typeof window !== 'undefined') {
+      const fit = fitBoardToViewport(target.boardConfig, window.innerWidth, window.innerHeight);
+      setZoom(fit.zoom);
+      setPan(fit.pan);
+    }
     showToast(`Switched to "${target.name}"`, 'success');
   };
 
@@ -444,6 +474,11 @@ export default function App() {
     setActiveTool('select');
     setIsEditingMounts(false);
     setPlacementCategory(null);
+    if (typeof window !== 'undefined') {
+      const fit = fitBoardToViewport(newConfig, window.innerWidth, window.innerHeight);
+      setZoom(fit.zoom);
+      setPan(fit.pan);
+    }
     showToast(`Created "${trimmed}"`, 'success');
   };
 
@@ -464,6 +499,11 @@ export default function App() {
       setActiveTool('select');
       setIsEditingMounts(false);
       setPlacementCategory(null);
+      if (typeof window !== 'undefined') {
+        const fit = fitBoardToViewport(next.boardConfig, window.innerWidth, window.innerHeight);
+        setZoom(fit.zoom);
+        setPan(fit.pan);
+      }
     }
     showToast('Project deleted', 'info');
   };
@@ -489,6 +529,11 @@ export default function App() {
     setActiveTool('select');
     setIsEditingMounts(false);
     setPlacementCategory(null);
+    if (typeof window !== 'undefined') {
+      const fit = fitBoardToViewport(copyProj.boardConfig, window.innerWidth, window.innerHeight);
+      setZoom(fit.zoom);
+      setPan(fit.pan);
+    }
     showToast(`Duplicated "${source.name}"`, 'success');
   };
 
@@ -497,6 +542,11 @@ export default function App() {
       const updated = { ...prev, ...newConfig };
       const pitch = updated.holePitchMm || (updated.platform === 'opengrid' ? 28 : 25);
       const totalTiles = updated.cols * updated.rows;
+      if (typeof window !== 'undefined') {
+        const fit = fitBoardToViewport(updated, window.innerWidth, window.innerHeight);
+        setZoom(fit.zoom);
+        setPan(fit.pan);
+      }
       showToast(
         `Surface updated: ${totalTiles} tiles (${updated.cols * (updated.tileWidthHoles || 8) * pitch}×${
           updated.rows * (updated.tileHeightHoles || 8) * pitch
