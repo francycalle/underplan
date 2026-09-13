@@ -1,0 +1,16 @@
+{
+  "name": "UnderPlan — Multiboard & openGrid Cable Planner",
+  "short_name": "UnderPlan",
+  "description": "Visual 2D CAD router & instant 3D print BOM generator for Underware modular cable management channels.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0F12",
+  "theme_color": "#0E0F12",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

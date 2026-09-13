@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://underplan.vercel.app/sitemap.xml
