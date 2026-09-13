@@ -182,3 +182,4 @@ test('formatBOMAsMarkdown, formatBOMAsCSV, and formatBOMAsJSON', () => {
   assert.equal(parsed.summary.totalTiles, 18);
   assert.equal(parsed.summary.totalChannels, 1);
 });
+

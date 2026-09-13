@@ -19,6 +19,7 @@ import type {
   Rotation,
   SnapPoint,
   TileDefinition,
+  TileSize,
   WorldPoint,
 } from './types';
 
@@ -27,11 +28,12 @@ import type {
 // ============================================================================
 
 /**
- * Standard default Underplan configuration:
+ * Standard default Multiboard configuration:
  * 6 columns x 3 rows of standard 8x8 Multiboard tiles (48x24 holes, 1200mm x 600mm).
  * Standard KeepMaking Multiboard pitch: 25mm center-to-center.
  */
 export const DEFAULT_BOARD_CONFIG: Readonly<BoardConfig> = Object.freeze({
+  platform: 'multiboard',
   cols: 6,
   rows: 3,
   tileWidthHoles: 8,
@@ -40,40 +42,23 @@ export const DEFAULT_BOARD_CONFIG: Readonly<BoardConfig> = Object.freeze({
 });
 
 /**
+ * Standard default openGrid configuration:
+ * 6 columns x 3 rows of 6x6 openGrid tiles (36x18 holes, 1008mm x 504mm).
+ * Standard openGrid pitch: 28mm center-to-center.
+ */
+export const DEFAULT_OPENGRID_CONFIG: Readonly<BoardConfig> = Object.freeze({
+  platform: 'opengrid',
+  cols: 6,
+  rows: 3,
+  tileWidthHoles: 6,
+  tileHeightHoles: 6,
+  holePitchMm: 28,
+});
+
+/**
  * Valid discrete rotation angles.
  */
 export const VALID_ROTATIONS: readonly Rotation[] = Object.freeze([0, 90, 180, 270]);
-
-// ============================================================================
-// 2. Board Dimensions & Tile Matrix
-// ============================================================================
-
-/**
- * Computes the discrete hole dimensions and physical millimeter dimensions of a board.
- */
-export function calculateBoardDimensions(config: BoardConfig = DEFAULT_BOARD_CONFIG): BoardDimensions {
-  const totalCols = Math.max(1, Math.floor(config.cols));
-  const totalRows = Math.max(1, Math.floor(config.rows));
-  const tileWidthHoles = Math.max(1, Math.floor(config.tileWidthHoles));
-  const tileHeightHoles = Math.max(1, Math.floor(config.tileHeightHoles));
-  const holePitchMm = Math.max(0.1, config.holePitchMm);
-
-  const totalHolesX = totalCols * tileWidthHoles;
-  const totalHolesY = totalRows * tileHeightHoles;
-  const totalWidthMm = totalHolesX * holePitchMm;
-  const totalHeightMm = totalHolesY * holePitchMm;
-
-  return {
-    totalCols,
-    totalRows,
-    totalHolesX,
-    totalHolesY,
-    totalWidthMm,
-    totalHeightMm,
-    customDeskWidthMm: config.customDeskWidthMm,
-    customDeskHeightMm: config.customDeskHeightMm,
-  };
-}
 
 /**
  * Multiboard modular tile options (number of holes per side).
@@ -84,6 +69,154 @@ export function calculateBoardDimensions(config: BoardConfig = DEFAULT_BOARD_CON
  */
 export const MULTIBOARD_MODULES = [8, 6, 4] as const;
 export type MultiboardModuleSize = typeof MULTIBOARD_MODULES[number];
+
+/**
+ * openGrid modular tile options (number of holes per side).
+ * Standard openGrid catalog modules:
+ * - 8: 8x8 holes (224mm x 224mm)
+ * - 7: 7x7 holes (196mm x 196mm)
+ * - 6: 6x6 holes (168mm x 168mm)
+ * - 5: 5x5 holes (140mm x 140mm)
+ * - 4: 4x4 holes (112mm x 112mm)
+ */
+export const OPENGRID_MODULES = [8, 7, 6, 5, 4] as const;
+export type OpenGridModuleSize = typeof OPENGRID_MODULES[number];
+
+/**
+ * All discrete dimensions in millimeters that cleanly form a complete,
+ * unbroken grid of standard Multiboard square tiles (modules 4x4, 6x6, or 8x8).
+ */
+export const STANDARD_MULTIBOARD_DIMENSIONS: readonly number[] = Object.freeze(
+  (() => {
+    const set = new Set<number>();
+    for (const mod of [4, 6, 8]) {
+      const tileMm = mod * 25;
+      for (let count = 1; count * tileMm <= 4000; count++) {
+        set.add(count * tileMm);
+      }
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  })()
+);
+
+/**
+ * All discrete dimensions in millimeters that cleanly form a complete,
+ * unbroken grid of standard openGrid square tiles (modules 4x4, 5x5, 6x6, 7x7, 8x8).
+ */
+export const STANDARD_OPENGRID_DIMENSIONS: readonly number[] = Object.freeze(
+  (() => {
+    const set = new Set<number>();
+    for (const mod of OPENGRID_MODULES) {
+      const tileMm = mod * 28;
+      for (let count = 1; count * tileMm <= 4000; count++) {
+        set.add(count * tileMm);
+      }
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  })()
+);
+
+/**
+ * Snaps any dimension (in mm) to the nearest valid standard Multiboard dimension
+ * (which forms a complete, unbroken grid of 4x4, 6x6, or 8x8 tiles).
+ * If the dimension is not standard, it snaps down to the largest standard dimension
+ * fitting inside the specified span (or the closest valid minimum).
+ */
+export function snapToValidMultiboardDimension(inputMm: number): { snappedMm: number; wasAdjusted: boolean } {
+  const rounded = Math.round(inputMm);
+  if (STANDARD_MULTIBOARD_DIMENSIONS.includes(rounded)) {
+    return { snappedMm: rounded, wasAdjusted: false };
+  }
+  const safe = Math.max(100, Math.min(4000, rounded));
+  let snapped = STANDARD_MULTIBOARD_DIMENSIONS[0];
+  for (const dim of STANDARD_MULTIBOARD_DIMENSIONS) {
+    if (dim <= safe) {
+      snapped = dim;
+    } else {
+      break;
+    }
+  }
+  return { snappedMm: snapped, wasAdjusted: true };
+}
+
+/**
+ * Snaps any dimension (in mm) to the nearest valid standard openGrid dimension.
+ */
+export function snapToValidOpenGridDimension(inputMm: number): { snappedMm: number; wasAdjusted: boolean } {
+  const rounded = Math.round(inputMm);
+  if (STANDARD_OPENGRID_DIMENSIONS.includes(rounded)) {
+    return { snappedMm: rounded, wasAdjusted: false };
+  }
+  const safe = Math.max(112, Math.min(4000, rounded));
+  let snapped = STANDARD_OPENGRID_DIMENSIONS[0];
+  for (const dim of STANDARD_OPENGRID_DIMENSIONS) {
+    if (dim <= safe) {
+      snapped = dim;
+    } else {
+      break;
+    }
+  }
+  return { snappedMm: snapped, wasAdjusted: true };
+}
+
+// ============================================================================
+// 2. Board Dimensions & Tile Matrix
+// ============================================================================
+
+/**
+ * Computes the discrete hole dimensions and physical millimeter dimensions of a board.
+ */
+export function calculateBoardDimensions(config: BoardConfig = DEFAULT_BOARD_CONFIG): BoardDimensions {
+  const platform = config.platform ?? 'multiboard';
+  const defaultPitch = platform === 'opengrid' ? 28 : 25;
+  const holePitchMm = Math.max(0.1, config.holePitchMm || defaultPitch);
+
+  if (config.customTiles && config.customTiles.length > 0) {
+    const maxCol = Math.max(...config.customTiles.map((t) => t.col)) + 1;
+    const maxRow = Math.max(...config.customTiles.map((t) => t.row)) + 1;
+    const totalHolesX = Math.max(...config.customTiles.map((t) => t.originHoleX + t.widthHoles));
+    const totalHolesY = Math.max(...config.customTiles.map((t) => t.originHoleY + t.heightHoles));
+    const totalWidthMm = totalHolesX * holePitchMm;
+    const totalHeightMm = totalHolesY * holePitchMm;
+
+    return {
+      platform,
+      totalCols: maxCol,
+      totalRows: maxRow,
+      totalHolesX,
+      totalHolesY,
+      totalWidthMm,
+      totalHeightMm,
+      customDeskWidthMm: config.customDeskWidthMm,
+      customDeskHeightMm: config.customDeskHeightMm,
+      customTiles: config.customTiles,
+      maxTileHoles: config.maxTileHoles,
+    };
+  }
+
+  const totalCols = Math.max(1, Math.floor(config.cols));
+  const totalRows = Math.max(1, Math.floor(config.rows));
+  const tileWidthHoles = Math.max(1, Math.floor(config.tileWidthHoles));
+  const tileHeightHoles = Math.max(1, Math.floor(config.tileHeightHoles));
+
+  const totalHolesX = totalCols * tileWidthHoles;
+  const totalHolesY = totalRows * tileHeightHoles;
+  const totalWidthMm = totalHolesX * holePitchMm;
+  const totalHeightMm = totalHolesY * holePitchMm;
+
+  return {
+    platform,
+    totalCols,
+    totalRows,
+    totalHolesX,
+    totalHolesY,
+    totalWidthMm,
+    totalHeightMm,
+    customDeskWidthMm: config.customDeskWidthMm,
+    customDeskHeightMm: config.customDeskHeightMm,
+    maxTileHoles: config.maxTileHoles,
+  };
+}
 
 export interface MultiboardTilingResult {
   readonly moduleSize: MultiboardModuleSize;
@@ -117,14 +250,14 @@ export function findBestMultiboardModule(
 
   if (forcedModule && forcedModule !== 'auto' && (MULTIBOARD_MODULES as readonly number[]).includes(forcedModule)) {
     const tileSizeMm = forcedModule * holePitchMm;
-    const cols = Math.max(1, Math.min(24, Math.round(safeW / tileSizeMm)));
-    const rows = Math.max(1, Math.min(16, Math.round(safeH / tileSizeMm)));
+    const isExactMatch = safeW % tileSizeMm === 0 && safeH % tileSizeMm === 0;
+    const cols = isExactMatch ? safeW / tileSizeMm : Math.max(1, Math.min(24, Math.floor(safeW / tileSizeMm)));
+    const rows = isExactMatch ? safeH / tileSizeMm : Math.max(1, Math.min(16, Math.floor(safeH / tileSizeMm)));
     const totalTiles = cols * rows;
     const totalHolesX = cols * forcedModule;
     const totalHolesY = rows * forcedModule;
     const actualWidthMm = totalHolesX * holePitchMm;
     const actualHeightMm = totalHolesY * holePitchMm;
-    const isExactMatch = safeW % tileSizeMm === 0 && safeH % tileSizeMm === 0;
 
     return {
       moduleSize: forcedModule,
@@ -147,14 +280,14 @@ export function findBestMultiboardModule(
     const tileSizeMm = mod * holePitchMm;
     const remW = safeW % tileSizeMm;
     const remH = safeH % tileSizeMm;
-    const cols = Math.max(1, Math.min(24, Math.round(safeW / tileSizeMm)));
-    const rows = Math.max(1, Math.min(16, Math.round(safeH / tileSizeMm)));
+    const isExactMatch = remW === 0 && remH === 0;
+    const cols = isExactMatch ? safeW / tileSizeMm : Math.max(1, Math.min(24, Math.floor(safeW / tileSizeMm)));
+    const rows = isExactMatch ? safeH / tileSizeMm : Math.max(1, Math.min(16, Math.floor(safeH / tileSizeMm)));
     const totalTiles = cols * rows;
     const totalHolesX = cols * mod;
     const totalHolesY = rows * mod;
     const actualWidthMm = totalHolesX * holePitchMm;
     const actualHeightMm = totalHolesY * holePitchMm;
-    const isExactMatch = remW === 0 && remH === 0;
 
     // Exact matches always win; if multiple are exact, largest module wins (8 > 6 > 4)
     if (isExactMatch) {
@@ -201,8 +334,400 @@ export function findBestMultiboardModule(
   };
 }
 
+export interface MultiboardValidation {
+  readonly isValid: boolean;
+  readonly isExactMatch: boolean;
+  readonly effectiveWidthMm: number;
+  readonly effectiveHeightMm: number;
+  readonly cols: number;
+  readonly rows: number;
+  readonly totalTiles: number;
+  readonly moduleSize: MultiboardModuleSize;
+  readonly warningTitle: string | null;
+  readonly warningMessage: string | null;
+}
+
 /**
- * Calculates the best-fit Multiboard tile columns and rows for a user-specified desk dimension (in mm).
+ * Returns which Multiboard module sizes (8, 6, 4) cleanly divide a given dimension in mm.
+ */
+export function getSupportedModules(dimMm: number, holePitchMm: number = 25): readonly MultiboardModuleSize[] {
+  const rounded = Math.round(dimMm);
+  const mods: MultiboardModuleSize[] = [];
+  for (const m of MULTIBOARD_MODULES) {
+    const tileMm = m * holePitchMm;
+    if (rounded > 0 && rounded % tileMm === 0) {
+      mods.push(m);
+    }
+  }
+  return mods;
+}
+
+/**
+ * Returns an ordered array of dimensions (in mm) that are physically compatible
+ * with otherDimMm using uniform square Multiboard tiles (4x4, 6x6, or 8x8).
+ */
+export function getCompatibleDimensions(
+  otherDimMm: number,
+  holePitchMm = 25,
+  maxMm = 4000
+): readonly number[] {
+  let modules = getSupportedModules(otherDimMm, holePitchMm);
+  // If otherDimMm is non-standard, snap it first
+  if (modules.length === 0) {
+    const snapped = snapToValidMultiboardDimension(otherDimMm).snappedMm;
+    modules = getSupportedModules(snapped, holePitchMm);
+  }
+  if (modules.length === 0) {
+    return STANDARD_MULTIBOARD_DIMENSIONS;
+  }
+  const set = new Set<number>();
+  for (const mod of modules) {
+    const tileMm = mod * holePitchMm;
+    for (let count = 1; count * tileMm <= maxMm; count++) {
+      set.add(count * tileMm);
+    }
+  }
+  return Object.freeze(Array.from(set).sort((a, b) => a - b));
+}
+
+/**
+ * Validates a pair of dimensions (Width x Height) against Multiboard square tile constraints.
+ * Since Multiboard tiles are square (4x4, 6x6, or 8x8), Width and Height must share a common module size.
+ * If they do not (e.g. 750x100 mm, where 750 requires 6x6 and 100 requires 4x4), it generates a clear,
+ * user-friendly warning explaining why the combination cannot be made and how it was adapted.
+ */
+export function validateMultiboardDimensions(
+  requestedWidthMm: number,
+  requestedHeightMm: number,
+  holePitchMm: number = 25
+): MultiboardValidation {
+  const w = Math.max(100, Math.round(requestedWidthMm));
+  const h = Math.max(100, Math.round(requestedHeightMm));
+
+  const wMods = getSupportedModules(w, holePitchMm);
+  const hMods = getSupportedModules(h, holePitchMm);
+  const commonMods = wMods.filter((m) => hMods.includes(m));
+
+  if (commonMods.length > 0) {
+    const bestMod = commonMods[0]; // [8, 6, 4] priority
+    const tiling = findBestMultiboardModule(w, h, bestMod, holePitchMm);
+    return {
+      isValid: true,
+      isExactMatch: true,
+      effectiveWidthMm: tiling.actualWidthMm,
+      effectiveHeightMm: tiling.actualHeightMm,
+      cols: tiling.cols,
+      rows: tiling.rows,
+      totalTiles: tiling.totalTiles,
+      moduleSize: tiling.moduleSize,
+      warningTitle: null,
+      warningMessage: null,
+    };
+  }
+
+  // If no common module exists, find best tiling fallback
+  const tiling = findBestMultiboardModule(w, h, 'auto', holePitchMm);
+
+  // Scenario A: Both dimensions are standard individually, but incompatible together (e.g. 750 x 100)
+  if (wMods.length > 0 && hMods.length > 0 && commonMods.length === 0) {
+    let explanation = '';
+    if (tiling.actualWidthMm === w && tiling.actualHeightMm !== h) {
+      explanation = `${w} mm richiede tile da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con altezza min ${tiling.actualHeightMm} mm.`;
+    } else if (tiling.actualWidthMm !== w && tiling.actualHeightMm === h) {
+      explanation = `${h} mm richiede tile da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con larghezza multipla di ${tiling.moduleSize * holePitchMm} mm.`;
+    } else {
+      explanation = `${w} mm e ${h} mm richiedono moduli differenti e non possono combinarsi con tile quadrate.`;
+    }
+
+    return {
+      isValid: false,
+      isExactMatch: false,
+      effectiveWidthMm: tiling.actualWidthMm,
+      effectiveHeightMm: tiling.actualHeightMm,
+      cols: tiling.cols,
+      rows: tiling.rows,
+      totalTiles: tiling.totalTiles,
+      moduleSize: tiling.moduleSize,
+      warningTitle: `Misura ${w}×${h} mm non realizzabile`,
+      warningMessage: `Tile quadrate: ${explanation} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+    };
+  }
+
+  // Scenario B: Non-standard single dimension (e.g. 875 mm)
+  const isWNonStd = wMods.length === 0;
+  const isHNonStd = hMods.length === 0;
+  let nonStdDesc = '';
+  if (isWNonStd && isHNonStd) {
+    nonStdDesc = `${w} mm e ${h} mm non sono misure standard Multiboard.`;
+  } else if (isWNonStd) {
+    nonStdDesc = `La larghezza da ${w} mm non è standard Multiboard.`;
+  } else {
+    nonStdDesc = `L'altezza da ${h} mm non è standard Multiboard.`;
+  }
+
+  return {
+    isValid: false,
+    isExactMatch: false,
+    effectiveWidthMm: tiling.actualWidthMm,
+    effectiveHeightMm: tiling.actualHeightMm,
+    cols: tiling.cols,
+    rows: tiling.rows,
+    totalTiles: tiling.totalTiles,
+    moduleSize: tiling.moduleSize,
+    warningTitle: `Misura non standard`,
+    warningMessage: `${nonStdDesc} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+  };
+}
+
+export interface OpenGridTilingResult {
+  readonly moduleSize: OpenGridModuleSize;
+  readonly cols: number;
+  readonly rows: number;
+  readonly totalTiles: number;
+  readonly totalHolesX: number;
+  readonly totalHolesY: number;
+  readonly actualWidthMm: number;
+  readonly actualHeightMm: number;
+  readonly isExactMatch: boolean;
+}
+
+/**
+ * Calculates the openGrid modular grid configuration for given surface dimensions.
+ * Evaluates candidate openGrid modules (8x8, 7x7, 6x6, 5x5, 4x4) at 28mm pitch.
+ */
+export function findBestOpenGridModule(
+  deskWidthMm: number,
+  deskHeightMm: number,
+  forcedModule?: OpenGridModuleSize | 'auto',
+  holePitchMm: number = 28
+): OpenGridTilingResult {
+  const safeW = Math.max(112, Math.round(deskWidthMm));
+  const safeH = Math.max(112, Math.round(deskHeightMm));
+
+  if (forcedModule && forcedModule !== 'auto' && (OPENGRID_MODULES as readonly number[]).includes(forcedModule)) {
+    const tileSizeMm = forcedModule * holePitchMm;
+    const isExactMatch = safeW % tileSizeMm === 0 && safeH % tileSizeMm === 0;
+    const cols = isExactMatch ? safeW / tileSizeMm : Math.max(1, Math.min(24, Math.floor(safeW / tileSizeMm)));
+    const rows = isExactMatch ? safeH / tileSizeMm : Math.max(1, Math.min(16, Math.floor(safeH / tileSizeMm)));
+    const totalTiles = cols * rows;
+    const totalHolesX = cols * forcedModule;
+    const totalHolesY = rows * forcedModule;
+    const actualWidthMm = totalHolesX * holePitchMm;
+    const actualHeightMm = totalHolesY * holePitchMm;
+
+    return {
+      moduleSize: forcedModule,
+      cols,
+      rows,
+      totalTiles,
+      totalHolesX,
+      totalHolesY,
+      actualWidthMm,
+      actualHeightMm,
+      isExactMatch,
+    };
+  }
+
+  let bestCandidate: OpenGridTilingResult | null = null;
+  let lowestError = Infinity;
+
+  for (const mod of OPENGRID_MODULES) {
+    const tileSizeMm = mod * holePitchMm;
+    const remW = safeW % tileSizeMm;
+    const remH = safeH % tileSizeMm;
+    const isExactMatch = remW === 0 && remH === 0;
+    const cols = isExactMatch ? safeW / tileSizeMm : Math.max(1, Math.min(24, Math.floor(safeW / tileSizeMm)));
+    const rows = isExactMatch ? safeH / tileSizeMm : Math.max(1, Math.min(16, Math.floor(safeH / tileSizeMm)));
+    const totalTiles = cols * rows;
+    const totalHolesX = cols * mod;
+    const totalHolesY = rows * mod;
+    const actualWidthMm = totalHolesX * holePitchMm;
+    const actualHeightMm = totalHolesY * holePitchMm;
+
+    if (isExactMatch) {
+      return {
+        moduleSize: mod,
+        cols,
+        rows,
+        totalTiles,
+        totalHolesX,
+        totalHolesY,
+        actualWidthMm,
+        actualHeightMm,
+        isExactMatch: true,
+      };
+    }
+
+    const error = Math.abs(safeW - actualWidthMm) + Math.abs(safeH - actualHeightMm);
+    if (error < lowestError) {
+      lowestError = error;
+      bestCandidate = {
+        moduleSize: mod,
+        cols,
+        rows,
+        totalTiles,
+        totalHolesX,
+        totalHolesY,
+        actualWidthMm,
+        actualHeightMm,
+        isExactMatch: false,
+      };
+    }
+  }
+
+  return bestCandidate ?? {
+    moduleSize: 6,
+    cols: Math.max(1, Math.round(safeW / 168)),
+    rows: Math.max(1, Math.round(safeH / 168)),
+    totalTiles: Math.max(1, Math.round(safeW / 168)) * Math.max(1, Math.round(safeH / 168)),
+    totalHolesX: Math.max(1, Math.round(safeW / 168)) * 6,
+    totalHolesY: Math.max(1, Math.round(safeH / 168)) * 6,
+    actualWidthMm: Math.max(1, Math.round(safeW / 168)) * 168,
+    actualHeightMm: Math.max(1, Math.round(safeH / 168)) * 168,
+    isExactMatch: false,
+  };
+}
+
+export interface OpenGridValidation {
+  readonly isValid: boolean;
+  readonly isExactMatch: boolean;
+  readonly effectiveWidthMm: number;
+  readonly effectiveHeightMm: number;
+  readonly cols: number;
+  readonly rows: number;
+  readonly totalTiles: number;
+  readonly moduleSize: OpenGridModuleSize;
+  readonly warningTitle: string | null;
+  readonly warningMessage: string | null;
+}
+
+/**
+ * Returns which openGrid module sizes (8, 7, 6, 5, 4) cleanly divide a given dimension in mm.
+ */
+export function getSupportedOpenGridModules(dimMm: number, holePitchMm: number = 28): readonly OpenGridModuleSize[] {
+  const rounded = Math.round(dimMm);
+  const mods: OpenGridModuleSize[] = [];
+  for (const m of OPENGRID_MODULES) {
+    const tileMm = m * holePitchMm;
+    if (rounded > 0 && rounded % tileMm === 0) {
+      mods.push(m);
+    }
+  }
+  return mods;
+}
+
+/**
+ * Returns an ordered array of dimensions (in mm) that are physically compatible
+ * with otherDimMm using uniform square openGrid tiles (4x4, 5x5, 6x6, 7x7, or 8x8).
+ */
+export function getCompatibleOpenGridDimensions(
+  otherDimMm: number,
+  holePitchMm = 28,
+  maxMm = 4000
+): readonly number[] {
+  let modules = getSupportedOpenGridModules(otherDimMm, holePitchMm);
+  if (modules.length === 0) {
+    const snapped = snapToValidOpenGridDimension(otherDimMm).snappedMm;
+    modules = getSupportedOpenGridModules(snapped, holePitchMm);
+  }
+  if (modules.length === 0) {
+    return STANDARD_OPENGRID_DIMENSIONS;
+  }
+  const set = new Set<number>();
+  for (const mod of modules) {
+    const tileMm = mod * holePitchMm;
+    for (let count = 1; count * tileMm <= maxMm; count++) {
+      set.add(count * tileMm);
+    }
+  }
+  return Object.freeze(Array.from(set).sort((a, b) => a - b));
+}
+
+/**
+ * Validates a pair of dimensions (Width x Height) against openGrid square tile constraints.
+ */
+export function validateOpenGridDimensions(
+  requestedWidthMm: number,
+  requestedHeightMm: number,
+  holePitchMm: number = 28
+): OpenGridValidation {
+  const w = Math.max(112, Math.round(requestedWidthMm));
+  const h = Math.max(112, Math.round(requestedHeightMm));
+
+  const wMods = getSupportedOpenGridModules(w, holePitchMm);
+  const hMods = getSupportedOpenGridModules(h, holePitchMm);
+  const commonMods = wMods.filter((m) => hMods.includes(m));
+
+  if (commonMods.length > 0) {
+    const bestMod = commonMods[0]; // [8, 7, 6, 5, 4] priority
+    const tiling = findBestOpenGridModule(w, h, bestMod, holePitchMm);
+    return {
+      isValid: true,
+      isExactMatch: true,
+      effectiveWidthMm: tiling.actualWidthMm,
+      effectiveHeightMm: tiling.actualHeightMm,
+      cols: tiling.cols,
+      rows: tiling.rows,
+      totalTiles: tiling.totalTiles,
+      moduleSize: tiling.moduleSize,
+      warningTitle: null,
+      warningMessage: null,
+    };
+  }
+
+  const tiling = findBestOpenGridModule(w, h, 'auto', holePitchMm);
+
+  if (wMods.length > 0 && hMods.length > 0 && commonMods.length === 0) {
+    let explanation = '';
+    if (tiling.actualWidthMm === w && tiling.actualHeightMm !== h) {
+      explanation = `${w} mm richiede tile openGrid da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con altezza min ${tiling.actualHeightMm} mm.`;
+    } else if (tiling.actualWidthMm !== w && tiling.actualHeightMm === h) {
+      explanation = `${h} mm richiede tile openGrid da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con larghezza multipla di ${tiling.moduleSize * holePitchMm} mm.`;
+    } else {
+      explanation = `${w} mm e ${h} mm richiedono moduli differenti e non possono combinarsi con tile quadrate.`;
+    }
+
+    return {
+      isValid: false,
+      isExactMatch: false,
+      effectiveWidthMm: tiling.actualWidthMm,
+      effectiveHeightMm: tiling.actualHeightMm,
+      cols: tiling.cols,
+      rows: tiling.rows,
+      totalTiles: tiling.totalTiles,
+      moduleSize: tiling.moduleSize,
+      warningTitle: `Misura ${w}×${h} mm non realizzabile`,
+      warningMessage: `Tile quadrate openGrid: ${explanation} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+    };
+  }
+
+  const isWNonStd = wMods.length === 0;
+  const isHNonStd = hMods.length === 0;
+  let nonStdDesc = '';
+  if (isWNonStd && isHNonStd) {
+    nonStdDesc = `${w} mm e ${h} mm non sono misure standard openGrid.`;
+  } else if (isWNonStd) {
+    nonStdDesc = `La larghezza da ${w} mm non è standard openGrid.`;
+  } else {
+    nonStdDesc = `L'altezza da ${h} mm non è standard openGrid.`;
+  }
+
+  return {
+    isValid: false,
+    isExactMatch: false,
+    effectiveWidthMm: tiling.actualWidthMm,
+    effectiveHeightMm: tiling.actualHeightMm,
+    cols: tiling.cols,
+    rows: tiling.rows,
+    totalTiles: tiling.totalTiles,
+    moduleSize: tiling.moduleSize,
+    warningTitle: `Misura non standard`,
+    warningMessage: `${nonStdDesc} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+  };
+}
+
+/**
+ * Calculates the best-fit tile columns and rows for a user-specified dimension (in mm).
  */
 export function computeTilingFromDeskDimensions(
   deskWidthMm: number,
@@ -219,20 +744,123 @@ export function computeTilingFromDeskDimensions(
 }
 
 /**
- * Generates the full 2D matrix of Multiboard tiles for a given board configuration.
+ * Partitions a 1D span of holes into optimal discrete tile sizes <= maxTile.
+ * Prioritizes maximum size tiles (maxTile) for structural rigidity and batch printing,
+ * but smartly balances remainders of 1 hole to avoid weak, fragile single-hole strips
+ * (e.g. 9 with max 8 becomes [5, 4] instead of [8, 1]; 17 becomes [8, 5, 4] instead of [8, 8, 1]).
+ */
+export function partitionDimension(totalHoles: number, maxTile: number = 8): readonly number[] {
+  const safeTotal = Math.max(1, Math.round(totalHoles));
+  const safeMax = Math.max(2, Math.round(maxTile));
+
+  if (safeTotal <= safeMax) {
+    return Object.freeze([safeTotal]);
+  }
+
+  const k = Math.ceil(safeTotal / safeMax);
+  const remainder = safeTotal - (k - 1) * safeMax;
+
+  // If remainder is clean (equal to safeMax)
+  if (remainder === safeMax) {
+    return Object.freeze(new Array(k).fill(safeMax));
+  }
+
+  // If remainder is 1 and we have at least 2 tiles, avoid fragile 1-hole sliver by splitting (safeMax + 1)
+  if (remainder === 1 && k >= 2) {
+    const fullCount = k - 2;
+    const splitA = Math.ceil((safeMax + 1) / 2);
+    const splitB = Math.floor((safeMax + 1) / 2);
+    const result: number[] = [];
+    for (let i = 0; i < fullCount; i++) result.push(safeMax);
+    result.push(splitA);
+    result.push(splitB);
+    return Object.freeze(result);
+  }
+
+  // Standard greedy remainder: (k-1) full tiles + 1 remainder tile
+  const result: number[] = [];
+  for (let i = 0; i < k - 1; i++) result.push(safeMax);
+  result.push(remainder);
+  return Object.freeze(result);
+}
+
+/**
+ * Optimizes an openGrid board of arbitrary dimensions (totalHolesX * totalHolesY)
+ * into a complete, printable set of rectangular openGrid tiles, compatible with the
+ * MakerWorld openGrid tile generator.
+ */
+export function optimizeOpenGridTiles(
+  totalHolesX: number,
+  totalHolesY: number,
+  maxTileHoles: number = 8
+): readonly TileDefinition[] {
+  const safeX = Math.max(1, Math.round(totalHolesX));
+  const safeY = Math.max(1, Math.round(totalHolesY));
+  const slicesX = partitionDimension(safeX, maxTileHoles);
+  const slicesY = partitionDimension(safeY, maxTileHoles);
+
+  const tiles: TileDefinition[] = [];
+  let currentY = 0;
+
+  for (let r = 0; r < slicesY.length; r++) {
+    const h = slicesY[r];
+    let currentX = 0;
+    for (let c = 0; c < slicesX.length; c++) {
+      const w = slicesX[c];
+      const typeStr: TileSize = (w === 8 && h === 8)
+        ? '8x8'
+        : (w === 7 && h === 7)
+          ? '7x7'
+          : (w === 6 && h === 6)
+            ? '6x6'
+            : (w === 5 && h === 5)
+              ? '5x5'
+              : (w === 4 && h === 4)
+                ? '4x4'
+                : 'custom';
+
+      tiles.push({
+        id: `og-tile-${c}-${r}`,
+        col: c,
+        row: r,
+        widthHoles: w,
+        heightHoles: h,
+        originHoleX: currentX,
+        originHoleY: currentY,
+        type: typeStr,
+      });
+      currentX += w;
+    }
+    currentY += h;
+  }
+
+  return Object.freeze(tiles);
+}
+
+/**
+ * Generates the full 2D matrix of tiles for a given board configuration.
  * Each tile specifies its matrix coordinates (col, row), absolute hole origins, and tile type.
  */
 export function generateTileMatrix(config: BoardConfig = DEFAULT_BOARD_CONFIG): readonly TileDefinition[] {
+  if (config.customTiles && config.customTiles.length > 0) {
+    return config.customTiles;
+  }
+
   const tiles: TileDefinition[] = [];
   const { cols, rows, tileWidthHoles, tileHeightHoles } = config;
 
-  const tileType = tileWidthHoles === 8 && tileHeightHoles === 8
-    ? '8x8'
-    : tileWidthHoles === 6 && tileHeightHoles === 6
-      ? '6x6'
-      : tileWidthHoles === 4 && tileHeightHoles === 4
-        ? '4x4'
-        : 'custom';
+  const tileType: TileSize =
+    tileWidthHoles === 8 && tileHeightHoles === 8
+      ? '8x8'
+      : tileWidthHoles === 7 && tileHeightHoles === 7
+        ? '7x7'
+        : tileWidthHoles === 6 && tileHeightHoles === 6
+          ? '6x6'
+          : tileWidthHoles === 5 && tileHeightHoles === 5
+            ? '5x5'
+            : tileWidthHoles === 4 && tileHeightHoles === 4
+              ? '4x4'
+              : 'custom';
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -415,14 +1043,14 @@ export function getCanonicalChannelSpec(
   mitreArmA: number = 2,
   mitreArmB: number = 2,
   offsetUnits: number = 1,
-  yTrunkUnits: number = 2,
-  _yBranchUnits: number = 2,
+  yTrunkUnits: number = 1,
+  _yBranchUnits: number = 1,
   diagonalVector?: { dx: number; dy: number }
 ): { cells: readonly GridPoint[]; width: number; height: number; snapIndices: readonly GridPoint[] } {
   switch (kind) {
     case 'straight': {
       const len = Math.max(1, Math.floor(length ?? 2));
-      const w = Math.max(1, Math.min(2, Math.floor(widthUnits || 1)));
+      const w = Math.max(1, Math.min(5, Math.floor(widthUnits || 1)));
       const cells: GridPoint[] = [];
       for (let y = 0; y < w; y++) {
         for (let x = 0; x < len; x++) {
@@ -500,19 +1128,23 @@ export function getCanonicalChannelSpec(
 
     case 'junction': {
       // 3-way Split (T-channel) with parametric trunk, branch, and width (1 or 2 MU):
+      // Note: branch length defines the extension AFTER the trunk
       const trunk = Math.max(3, Math.min(8, Math.floor(trunkSpanUnits || 3)));
-      const branch = Math.max(2, Math.min(6, Math.floor(branchSpanUnits || 2)));
-      const w = Math.max(1, Math.min(2, Math.floor(widthUnits || 1)));
+      const branch = Math.max(1, Math.min(6, Math.floor(branchSpanUnits || 2)));
+      const maxW = trunk <= 3 ? 1 : 2;
+      const w = Math.max(1, Math.min(maxW, Math.floor(widthUnits || 1)));
+      const totalH = w + branch;
       const cells: GridPoint[] = [];
+
       // Top horizontal trunk
       for (let y = 0; y < w; y++) {
         for (let x = 0; x < trunk; x++) {
           cells.push({ x, y });
         }
       }
-      // Center branch extending down
+      // Center branch extending down after the trunk
       const centerX = Math.floor((trunk - w) / 2);
-      for (let y = w; y < branch; y++) {
+      for (let y = w; y < totalH; y++) {
         for (let x = centerX; x < centerX + w; x++) {
           cells.push({ x, y });
         }
@@ -530,7 +1162,7 @@ export function getCanonicalChannelSpec(
       }
       // Center branch bottom port:
       for (let x = centerX; x < centerX + w; x++) {
-        snapPoints.push({ x, y: branch - 1 });
+        snapPoints.push({ x, y: totalH - 1 });
       }
       if (trunk >= 5) {
         for (let y = 0; y < w; y++) {
@@ -541,14 +1173,14 @@ export function getCanonicalChannelSpec(
       return {
         cells: Object.freeze(cells),
         width: trunk,
-        height: branch,
+        height: totalH,
         snapIndices: Object.freeze(snapPoints),
       };
     }
 
     case 'cross': {
-      // 4-way Intersection (X-channel):
-      const w = Math.max(1, Math.min(2, Math.floor(widthUnits || 1)));
+      // 4-way Intersection (X-channel) supporting 1, 2, or 3 MU width:
+      const w = Math.max(1, Math.min(3, Math.floor(widthUnits || 1)));
       if (w === 1) {
         const cells: GridPoint[] = [
           { x: 1, y: 0 }, // North port
@@ -569,7 +1201,7 @@ export function getCanonicalChannelSpec(
           height: 3,
           snapIndices: Object.freeze(snapPoints),
         };
-      } else {
+      } else if (w === 2) {
         // 4x4 footprint for 2 MU wide cross intersection
         const cells: GridPoint[] = [];
         for (let y = 0; y < 4; y++) {
@@ -590,13 +1222,43 @@ export function getCanonicalChannelSpec(
           height: 4,
           snapIndices: Object.freeze(snapPoints),
         };
+      } else {
+        // 5x5 footprint for 3 MU wide cross intersection
+        const cells: GridPoint[] = [];
+        // North port
+        for (let x = 1; x <= 3; x++) cells.push({ x, y: 0 });
+        // South port
+        for (let x = 1; x <= 3; x++) cells.push({ x, y: 4 });
+        // West port
+        for (let y = 1; y <= 3; y++) cells.push({ x: 0, y });
+        // East port
+        for (let y = 1; y <= 3; y++) cells.push({ x: 4, y });
+        // Center 3x3 core
+        for (let y = 1; y <= 3; y++) {
+          for (let x = 1; x <= 3; x++) {
+            cells.push({ x, y });
+          }
+        }
+        const snapPoints: GridPoint[] = [
+          { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, // North
+          { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 3 }, // West
+          { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 4, y: 3 }, // East
+          { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, // South
+        ];
+        return {
+          cells: Object.freeze(cells),
+          width: 5,
+          height: 5,
+          snapIndices: Object.freeze(snapPoints),
+        };
       }
     }
 
     case 'curved': {
-      // Smooth radial quarter-circle bend (radius 2, 3, 4, 5 MU) with scalable width:
+      // Smooth radial quarter-circle bend (radius 2, 3, 4, 5 MU) with scalable width (up to 3 MU for R4/R5):
       const radius = Math.max(2, Math.min(8, Math.floor(radiusUnits || 2)));
-      const w = Math.max(1, Math.min(2, Math.floor(widthUnits || 1)));
+      const maxWForRadius = radius <= 2 ? 1 : radius === 3 ? 2 : 3;
+      const w = Math.max(1, Math.min(maxWForRadius, Math.floor(widthUnits || 1)));
       const cells: GridPoint[] = [];
       const visited = new Set<string>();
 
@@ -623,12 +1285,6 @@ export function getCanonicalChannelSpec(
         snapPoints.push({ x: dw, y: 0 });
         snapPoints.push({ x: radius - 1, y: radius - 1 - dw });
       }
-      if (radius >= 4) {
-        const midIdx = Math.floor(cells.length / 2);
-        if (cells[midIdx]) {
-          snapPoints.push(cells[midIdx]);
-        }
-      }
 
       return {
         cells: Object.freeze(cells),
@@ -640,7 +1296,7 @@ export function getCanonicalChannelSpec(
 
     case 'y_split': {
       // 45° Y-junction fork: 2 branches at top converging into trunk downwards
-      const trunk = Math.max(1, Math.min(6, Math.floor(yTrunkUnits || 2)));
+      const trunk = Math.max(1, Math.min(6, Math.floor(_yBranchUnits ?? yTrunkUnits ?? 1)));
       const w = Math.max(1, Math.min(2, Math.floor(widthUnits || 1)));
       const cells: GridPoint[] = [];
       const snapPoints: GridPoint[] = [];
@@ -955,12 +1611,13 @@ export function getLocalFootprint(
   offsetUnits?: number,
   yTrunkUnits?: number,
   yBranchUnits?: number,
-  diagonalVector?: { dx: number; dy: number }
+  diagonalVector?: { dx: number; dy: number },
+  mirrored?: boolean
 ): readonly GridPoint[] {
   const spec = getCanonicalChannelSpec(
     kind,
     length,
-    widthUnits ?? 1,
+    widthUnits ?? (kind === 'accessory' ? 6 : 1),
     armSpanUnits ?? 2,
     trunkSpanUnits ?? 3,
     branchSpanUnits ?? 2,
@@ -968,11 +1625,18 @@ export function getLocalFootprint(
     mitreArmA ?? 2,
     mitreArmB ?? 2,
     offsetUnits ?? 1,
-    yTrunkUnits ?? 2,
-    yBranchUnits ?? 2,
+    yTrunkUnits ?? yBranchUnits ?? 1,
+    yBranchUnits ?? yTrunkUnits ?? 1,
     diagonalVector
   );
-  const rotated = spec.cells.map((cell) =>
+  let baseCells = spec.cells;
+  if (mirrored) {
+    baseCells = baseCells.map((c) => ({
+      x: (spec.width - 1) - c.x,
+      y: c.y,
+    }));
+  }
+  const rotated = baseCells.map((cell) =>
     rotateLocalCell(cell, spec.width, spec.height, rotation)
   );
 
@@ -1037,7 +1701,8 @@ export function getChannelFootprint(channel: PlacedChannel): ChannelFootprint {
     channel.offsetUnits,
     channel.yTrunkUnits,
     channel.yBranchUnits,
-    channel.diagonalVector
+    channel.diagonalVector,
+    channel.mirrored
   );
   const posX = Math.round(channel.position.x);
   const posY = Math.round(channel.position.y);
@@ -1073,22 +1738,52 @@ export function getChannelBoundingBox(channel: PlacedChannel): BoundingBox {
  * and manual contextual mount editing overrides.
  */
 export function getChannelSnapPoints(channel: PlacedChannel): readonly SnapPoint[] {
+  if (channel.mountingType === 'none') {
+    return Object.freeze([]);
+  }
   const posX = Math.round(channel.position.x);
   const posY = Math.round(channel.position.y);
   const mType: MountingType = channel.mountingType ?? 'threaded_snap';
 
-  // If manual connector mode is active and user specified custom mount points, use them directly
-  if (channel.connectorMode === 'manual' && channel.customMountPoints && channel.customMountPoints.length > 0) {
-    return Object.freeze(
-      channel.customMountPoints.map((p, index) => ({
-        x: posX + p.x,
-        y: posY + p.y,
-        channelId: channel.id,
-        localIndex: index,
-        isTerminal: index === 0 || index === (channel.customMountPoints?.length ?? 1) - 1,
-        mountingType: mType,
-      }))
-    );
+  // If manual connector mode is active and user specified custom mount points/indices, anchor to footprint cells
+  if (channel.connectorMode === 'manual') {
+    const fp = getChannelFootprint(channel);
+    let indices = channel.customMountIndices;
+
+    // Fallback: If customMountIndices is unset but legacy customMountPoints exist, match to fp.cells
+    if (!indices && channel.customMountPoints && channel.customMountPoints.length > 0) {
+      indices = channel.customMountPoints.map((p) => {
+        const absX = posX + p.x;
+        const absY = posY + p.y;
+        const exactIdx = fp.cells.findIndex((c) => c.x === absX && c.y === absY);
+        if (exactIdx >= 0) return exactIdx;
+        let bestDist = Infinity;
+        let bestIdx = 0;
+        fp.cells.forEach((c, i) => {
+          const d = Math.hypot(c.x - absX, c.y - absY);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        });
+        return bestIdx;
+      });
+      indices = Array.from(new Set(indices));
+    }
+
+    if (indices !== undefined) {
+      const validIndices = indices.filter((idx) => idx >= 0 && idx < fp.cells.length);
+      return Object.freeze(
+        validIndices.map((idx, localIdx) => ({
+          x: fp.cells[idx].x,
+          y: fp.cells[idx].y,
+          channelId: channel.id,
+          localIndex: localIdx,
+          isTerminal: localIdx === 0 || localIdx === validIndices.length - 1,
+          mountingType: mType,
+        }))
+      );
+    }
   }
 
   const spec = getCanonicalChannelSpec(
@@ -1126,7 +1821,7 @@ export function getChannelSnapPoints(channel: PlacedChannel): readonly SnapPoint
   } else if (channel.kind === 'straight' && channel.customSnapSpacing && channel.customSnapSpacing > 0) {
     // Custom spacing override for straight channel
     const len = Math.max(1, Math.floor(channel.length ?? 2));
-    const w = Math.max(1, Math.min(2, Math.floor(channel.widthUnits || 1)));
+    const w = Math.max(1, Math.min(5, Math.floor(channel.widthUnits || 1)));
     const spacing = Math.max(1, Math.floor(channel.customSnapSpacing));
     const custom: GridPoint[] = [];
     for (let y = 0; y < w; y++) {
@@ -1141,13 +1836,27 @@ export function getChannelSnapPoints(channel: PlacedChannel): readonly SnapPoint
     localSnaps = custom;
   }
 
+  if (channel.mirrored) {
+    localSnaps = localSnaps.map((s) => ({
+      x: (spec.width - 1) - s.x,
+      y: s.y,
+    }));
+  }
+
   // Rotate snap points with the channel
   const rotatedSnaps = localSnaps.map((cell) =>
     rotateLocalCell(cell, spec.width, spec.height, channel.rotation)
   );
 
   // Normalize by bounding box origin if rotated
-  const localFootprintRaw = spec.cells.map((cell) =>
+  let baseCells = spec.cells;
+  if (channel.mirrored) {
+    baseCells = baseCells.map((c) => ({
+      x: (spec.width - 1) - c.x,
+      y: c.y,
+    }));
+  }
+  const localFootprintRaw = baseCells.map((cell) =>
     rotateLocalCell(cell, spec.width, spec.height, channel.rotation)
   );
   const minX = Math.min(...localFootprintRaw.map((p) => p.x));
@@ -1398,6 +2107,30 @@ export function getMultiboardOctagonPoints(cx: number, cy: number, radius: numbe
 }
 
 /**
+ * Computes the SVG rectangle parameters for an openGrid square hole with rounded corners.
+ * In openGrid (28mm pitch), each unit cell contains a square cutout with rounded corners.
+ *
+ * @param cx Center X in SVG pixels
+ * @param cy Center Y in SVG pixels
+ * @param size Square side length in mm/pixels (default: 20.0 mm for 28mm cell)
+ * @param rx Corner fillet radius (default: 2.5 mm)
+ */
+export function getOpenGridHoleRect(
+  cx: number,
+  cy: number,
+  size: number = 20.0,
+  rx: number = 0.8
+): { x: number; y: number; width: number; height: number; rx: number } {
+  return {
+    x: cx - size / 2,
+    y: cy - size / 2,
+    width: size,
+    height: size,
+    rx,
+  };
+}
+
+/**
  * Returns the center coordinate of a channel in physical world mm (or canvas pixels).
  * Useful for positioning labels, telemetry badges, or selection highlights.
  */
@@ -1431,7 +2164,7 @@ export function getChannelUnitLength(channel: PlacedChannel): number {
     case 'curved':
       return channel.radiusUnits ?? 2;
     case 'y_split':
-      return (channel.yTrunkUnits ?? 2) + (channel.widthUnits && channel.widthUnits > 1 ? 2 : 1);
+      return (channel.yBranchUnits ?? channel.yTrunkUnits ?? 1) + (channel.widthUnits && channel.widthUnits > 1 ? 2 : 1);
     case 'diagonal':
       return Math.max(1, Math.floor(channel.length ?? 3));
     case 'mitred':
@@ -1500,19 +2233,11 @@ export function getCurvedChannelGeometry(
   };
 
   const rc = (radius - 1) * pitchMm;
-  const w = Math.max(1, Math.min(2, Math.floor(channel.widthUnits || 1)));
+  const maxWForRadius = radius <= 2 ? 1 : radius === 3 ? 2 : 3;
+  const w = Math.max(1, Math.min(maxWForRadius, Math.floor(channel.widthUnits || 1)));
 
-  let rOuter: number;
-  let rInner: number;
-
-  if (w === 1) {
-    rOuter = rc + pitchMm / 2;
-    rInner = Math.max(2, rc - pitchMm / 2);
-  } else {
-    // 2 MU wide: spans outer hole track (rc) with +12.5mm and adjacent inner track (rc - pitchMm) with -12.5mm
-    rOuter = rc + pitchMm / 2;
-    rInner = Math.max(2, rc - pitchMm - pitchMm / 2);
-  }
+  const rOuter = rc + pitchMm / 2;
+  const rInner = Math.max(2, rc - (w - 1) * pitchMm - pitchMm / 2);
 
   const v1 = { x: p1.x - center.x, y: p1.y - center.y };
   const v2 = { x: p2.x - center.x, y: p2.y - center.y };
@@ -1596,7 +2321,7 @@ export function getYBranchChannelGeometry(
   rightCenterLinePath: string;
   innestoPath: string;
 } {
-  const trunkUnits = Math.max(1, Math.min(6, Math.floor(channel.yTrunkUnits || 2)));
+  const trunkUnits = Math.max(1, Math.min(6, Math.floor(channel.yBranchUnits ?? channel.yTrunkUnits ?? 1)));
   const w = Math.max(1, Math.min(2, Math.floor(channel.widthUnits || 1)));
   const rot = channel.rotation;
   const boundW = w === 1 ? 3 : 6;
@@ -2119,4 +2844,218 @@ export function getChannelOutlinePath(
 
   return pathCommands.join(' ');
 }
+
+/**
+ * Rotates a placed channel clockwise by 90 degrees (or specified discrete angle),
+ * executing a true 4-quadrant rotation around its anchor point for straight and accessory channels,
+ * and ensuring that any custom-edited mount points are rotated to match the new local coordinate frame.
+ */
+export function rotatePlacedChannel(
+  channel: PlacedChannel,
+  deltaDeg: number = 90,
+  boardConfig?: BoardConfig
+): PlacedChannel {
+  const nextRot = (((channel.rotation + deltaDeg) % 360) as Rotation);
+  let nextPos = { ...channel.position };
+
+  if (channel.kind === 'straight') {
+    const L = Math.max(1, Math.floor(channel.length ?? 2));
+    const W = Math.max(1, Math.min(5, Math.floor(channel.widthUnits || 1)));
+    const curRot = (channel.rotation ?? 0) as Rotation;
+    let ax = channel.position.x;
+    let ay = channel.position.y;
+    if (curRot === 90) {
+      ax = channel.position.x + (W - 1);
+    } else if (curRot === 180) {
+      ax = channel.position.x + (L - 1);
+      ay = channel.position.y + (W - 1);
+    } else if (curRot === 270) {
+      ay = channel.position.y + (L - 1);
+    }
+
+    let nx = ax;
+    let ny = ay;
+    if (nextRot === 90) {
+      nx = ax - (W - 1);
+    } else if (nextRot === 180) {
+      nx = ax - (L - 1);
+      ny = ay - (W - 1);
+    } else if (nextRot === 270) {
+      ny = ay - (L - 1);
+    }
+    nextPos = { x: nx, y: ny };
+  } else if (channel.kind === 'accessory') {
+    const W = Math.max(1, Math.floor(channel.widthUnits || 6));
+    const H = Math.max(1, Math.floor(channel.length || 3));
+    const curRot = (channel.rotation ?? 0) as Rotation;
+    let ax = channel.position.x;
+    let ay = channel.position.y;
+    if (curRot === 90) {
+      ax = channel.position.x + (H - 1);
+    } else if (curRot === 180) {
+      ax = channel.position.x + (W - 1);
+      ay = channel.position.y + (H - 1);
+    } else if (curRot === 270) {
+      ay = channel.position.y + (W - 1);
+    }
+
+    let nx = ax;
+    let ny = ay;
+    if (nextRot === 90) {
+      nx = ax - (H - 1);
+    } else if (nextRot === 180) {
+      nx = ax - (W - 1);
+      ny = ay - (H - 1);
+    } else if (nextRot === 270) {
+      ny = ay - (W - 1);
+    }
+    nextPos = { x: nx, y: ny };
+  }
+
+  // Keep within board limits if boardConfig provided, otherwise keep non-negative
+  if (boardConfig) {
+    const dims = calculateBoardDimensions(boardConfig);
+    const testCh: PlacedChannel = { ...channel, position: nextPos, rotation: nextRot };
+    const fp = getChannelFootprint(testCh);
+    if (fp.bounds.minX < 0) nextPos.x += -fp.bounds.minX;
+    if (fp.bounds.minY < 0) nextPos.y += -fp.bounds.minY;
+    if (fp.bounds.maxX >= dims.totalHolesX) nextPos.x -= (fp.bounds.maxX - dims.totalHolesX + 1);
+    if (fp.bounds.maxY >= dims.totalHolesY) nextPos.y -= (fp.bounds.maxY - dims.totalHolesY + 1);
+  } else {
+    if (nextPos.x < 0) nextPos.x = 0;
+    if (nextPos.y < 0) nextPos.y = 0;
+  }
+
+  const nextChannel: PlacedChannel = {
+    ...channel,
+    position: nextPos,
+    rotation: nextRot,
+  };
+
+  if (channel.connectorMode === 'manual') {
+    const curFp = getChannelFootprint(channel);
+    let indices = channel.customMountIndices;
+
+    // If indices not present, derive from customMountPoints against curFp.cells
+    if (!indices && channel.customMountPoints && channel.customMountPoints.length > 0) {
+      const curPosX = Math.round(channel.position.x);
+      const curPosY = Math.round(channel.position.y);
+      indices = channel.customMountPoints.map((p) => {
+        const absX = curPosX + p.x;
+        const absY = curPosY + p.y;
+        const exactIdx = curFp.cells.findIndex((c) => c.x === absX && c.y === absY);
+        if (exactIdx >= 0) return exactIdx;
+        let bestDist = Infinity;
+        let bestIdx = 0;
+        curFp.cells.forEach((c, i) => {
+          const d = Math.hypot(c.x - absX, c.y - absY);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        });
+        return bestIdx;
+      });
+      indices = Array.from(new Set(indices));
+    }
+
+    if (indices) {
+      const nextFp = getChannelFootprint(nextChannel);
+      const nextPosX = Math.round(nextChannel.position.x);
+      const nextPosY = Math.round(nextChannel.position.y);
+      const validIndices = indices.filter((idx) => idx >= 0 && idx < nextFp.cells.length);
+      const rotatedPoints: GridPoint[] = validIndices.map((idx) => ({
+        x: nextFp.cells[idx].x - nextPosX,
+        y: nextFp.cells[idx].y - nextPosY,
+      }));
+
+      return {
+        ...nextChannel,
+        customMountIndices: validIndices,
+        customMountPoints: Object.freeze(rotatedPoints),
+      };
+    }
+  }
+
+  return nextChannel;
+}
+
+/**
+ * Mirrors a placed channel horizontally across the Y-axis (DX ↔ SX),
+ * maintaining the exact vertical position and reflecting the asymmetric branch
+ * and any manual mounting points.
+ */
+export function mirrorPlacedChannel(
+  channel: PlacedChannel,
+  boardConfig?: BoardConfig
+): PlacedChannel {
+  const nextRot = (((360 - (channel.rotation ?? 0)) % 360) as Rotation);
+  const nextMirrored = !channel.mirrored;
+
+  let nextChannel: PlacedChannel = {
+    ...channel,
+    rotation: nextRot,
+    mirrored: nextMirrored,
+  };
+
+  // If board bounds are enforced, keep within board limits
+  if (boardConfig) {
+    const dims = calculateBoardDimensions(boardConfig);
+    const fp = getChannelFootprint(nextChannel);
+    let nextPos = { ...nextChannel.position };
+    if (fp.bounds.minX < 0) nextPos.x += -fp.bounds.minX;
+    if (fp.bounds.minY < 0) nextPos.y += -fp.bounds.minY;
+    if (fp.bounds.maxX >= dims.totalHolesX) nextPos.x -= (fp.bounds.maxX - dims.totalHolesX + 1);
+    if (fp.bounds.maxY >= dims.totalHolesY) nextPos.y -= (fp.bounds.maxY - dims.totalHolesY + 1);
+    nextChannel = { ...nextChannel, position: nextPos };
+  }
+
+  // If manual mounting points exist, mirror the custom mount indices / points
+  if (channel.connectorMode === 'manual') {
+    const curFp = getChannelFootprint(channel);
+    let indices = channel.customMountIndices;
+
+    if (!indices && channel.customMountPoints && channel.customMountPoints.length > 0) {
+      const curPosX = Math.round(channel.position.x);
+      const curPosY = Math.round(channel.position.y);
+      indices = channel.customMountPoints.map((p) => {
+        const absX = curPosX + p.x;
+        const absY = curPosY + p.y;
+        const exactIdx = curFp.cells.findIndex((c) => c.x === absX && c.y === absY);
+        if (exactIdx >= 0) return exactIdx;
+        let bestDist = Infinity;
+        let bestIdx = 0;
+        curFp.cells.forEach((c, i) => {
+          const d = Math.hypot(c.x - absX, c.y - absY);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        });
+        return bestIdx;
+      });
+      indices = Array.from(new Set(indices));
+    }
+
+    if (indices !== undefined) {
+      const nextFp = getChannelFootprint(nextChannel);
+      const nextPosX = Math.round(nextChannel.position.x);
+      const nextPosY = Math.round(nextChannel.position.y);
+      const validIndices = indices.filter((idx) => idx >= 0 && idx < nextFp.cells.length);
+      const mirroredPoints: GridPoint[] = validIndices.map((idx) => ({
+        x: nextFp.cells[idx].x - nextPosX,
+        y: nextFp.cells[idx].y - nextPosY,
+      }));
+
+      return {
+        ...nextChannel,
+        customMountIndices: validIndices,
+        customMountPoints: Object.freeze(mirroredPoints),
+      };
+    }
+  }
+
+  return nextChannel;
+}
+
 

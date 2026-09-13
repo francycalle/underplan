@@ -80,7 +80,7 @@ test('AC-4: Channel footprint calculations for Straight, Corner, and Junction', 
   assert.equal(fpC.bounds.width, 2);
   assert.equal(fpC.bounds.height, 2);
 
-  // Junction 3x2 footprint
+  // Junction 3x2 footprint (trunk 3, branch 2 extends after trunk: total height 3)
   const j: PlacedChannel = {
     id: 'j1',
     kind: 'junction',
@@ -89,9 +89,9 @@ test('AC-4: Channel footprint calculations for Straight, Corner, and Junction', 
     category: 'video',
   };
   const fpJ = getChannelFootprint(j);
-  assert.equal(fpJ.cells.length, 4);
+  assert.equal(fpJ.cells.length, 5);
   assert.equal(fpJ.bounds.width, 3);
-  assert.equal(fpJ.bounds.height, 2);
+  assert.equal(fpJ.bounds.height, 3);
 });
 
 // ----------------------------------------------------------------------------

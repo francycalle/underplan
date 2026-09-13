@@ -15,6 +15,9 @@ import {
   fitBoardToViewport,
   getLocalFootprint,
   DEFAULT_BOARD_CONFIG,
+  rotatePlacedChannel,
+  mirrorPlacedChannel,
+  getCurvedChannelGeometry,
 } from '../src/lib/geometry.ts';
 import type { PlacedChannel, BoardState, BoardConfig } from '../src/lib/types.ts';
 
@@ -59,9 +62,9 @@ test('Parametric T-junction: trunk 3-6 MU, branch 2-4 MU', () => {
   assert.ok(nameT.includes('5×3 MU'));
   assert.ok(nameT.includes('125×75mm'));
 
-  // Footprint check for trunk 5 x branch 3
+  // Footprint check for trunk 5 x branch 3: 5 on trunk + 3 on branch = 8 cells
   const fpT = getLocalFootprint('junction', undefined, 0, 1, undefined, 5, 3);
-  assert.equal(fpT.length, 7); // 5 on trunk + 2 on branch = 7 cells
+  assert.equal(fpT.length, 8);
 });
 
 // ----------------------------------------------------------------------------
@@ -410,6 +413,206 @@ test('2 MU Width Snap Scaling: Y-Split snaps double across all 3 ports (no singl
   assert.ok(straightXCoords.has(2));
   assert.ok(straightXCoords.has(3));
 });
+
+test('Mounting: direct_snap creates 0 separate hardware items in BOM but counts physical mounts', () => {
+  const directSnapChannel: PlacedChannel = {
+    id: 'ch-direct-snap',
+    kind: 'straight',
+    length: 4,
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    mountingType: 'direct_snap',
+    category: 'power',
+  };
+
+  const state: BoardState = {
+    config: DEFAULT_BOARD_CONFIG,
+    channels: [directSnapChannel],
+    selectedChannelId: null,
+  };
+
+  const bom = generateBOM(state);
+
+  // Total physical mounts placed on board
+  assert.equal(bom.summary.totalMounts, 3); // 3 snaps for 4U straight
+  assert.equal(bom.summary.mountCountsByType.direct_snap.base, 3);
+  assert.equal(bom.summary.mountCountsByType.direct_snap.total, 3); // 0% spares for integrated
+
+  // Hardware items should NOT include separate snap connectors
+  const hardwareItems = bom.items.filter((item) => item.category === 'hardware');
+  assert.equal(hardwareItems.length, 0);
+
+  // But the channel itself is in 3D printed parts
+  const printItems = bom.items.filter((item) => item.category === 'channels');
+  assert.equal(printItems.length, 1);
+});
+
+test('Curved Channel: supports width 3 MU on R4 and R5, inner radius scaled properly', () => {
+  const curvedR4W3: PlacedChannel = {
+    id: 'curved-r4-w3',
+    kind: 'curved',
+    radiusUnits: 4,
+    widthUnits: 3,
+    position: { x: 5, y: 5 },
+    rotation: 0,
+    category: 'power',
+  };
+
+  const fp = getChannelFootprint(curvedR4W3);
+  assert.ok(fp.cells.length > 0);
+  assert.equal(fp.bounds.width, 4);
+  assert.equal(fp.bounds.height, 4);
+
+  // Check smooth SVG geometry calculation
+  const geom = getCurvedChannelGeometry(curvedR4W3, 25, 12.5);
+  assert.ok(geom.ductPath.includes('M'));
+  assert.ok(geom.ductPath.includes('A'));
+  assert.ok(geom.center);
+});
+
+test('X-Channel: supports width 3 MU (5x5 MU footprint, 21 cells, 12 snaps)', () => {
+  const crossW3: PlacedChannel = {
+    id: 'cross-w3',
+    kind: 'cross',
+    widthUnits: 3,
+    position: { x: 2, y: 2 },
+    rotation: 0,
+    category: 'power',
+  };
+
+  const fp = getChannelFootprint(crossW3);
+  assert.equal(fp.cells.length, 21);
+  assert.equal(fp.bounds.width, 5);
+  assert.equal(fp.bounds.height, 5);
+
+  const snaps = getChannelSnapPoints(crossW3);
+  assert.equal(snaps.length, 12); // 3 snaps on each of the 4 ports
+});
+
+test('T-Channel: mirrorPlacedChannel performs true horizontal reflection across Y-axis (DX ↔ SX)', () => {
+  // 1. Vertical T-channel (rotation 90 vs 270)
+  const tChannelDX: PlacedChannel = {
+    id: 't-dx',
+    kind: 'junction',
+    trunkSpanUnits: 4,
+    branchSpanUnits: 2,
+    position: { x: 10, y: 10 },
+    rotation: 270, // Branch pointing East
+    category: 'power',
+  };
+
+  const flippedSX = mirrorPlacedChannel(tChannelDX, DEFAULT_BOARD_CONFIG);
+  assert.equal(flippedSX.rotation, 90);
+  assert.equal(flippedSX.mirrored, true);
+  // Y bounds strictly preserved
+  const fpDX = getChannelFootprint(tChannelDX);
+  const fpSX = getChannelFootprint(flippedSX);
+  assert.equal(fpSX.bounds.minY, fpDX.bounds.minY);
+  assert.equal(fpSX.bounds.maxY, fpDX.bounds.maxY);
+
+  // 2. Horizontal Asymmetric T-channel (trunk 4 MU at rotation 0)
+  const tChannelH: PlacedChannel = {
+    id: 't-h',
+    kind: 'junction',
+    trunkSpanUnits: 4,
+    branchSpanUnits: 2,
+    position: { x: 5, y: 5 },
+    rotation: 0,
+    category: 'data',
+  };
+
+  const flippedH = mirrorPlacedChannel(tChannelH, DEFAULT_BOARD_CONFIG);
+  assert.equal(flippedH.rotation, 0);
+  assert.equal(flippedH.mirrored, true);
+  const fpH = getChannelFootprint(tChannelH);
+  const fpHMirrored = getChannelFootprint(flippedH);
+  // Bounds remain exactly the same
+  assert.deepEqual(fpHMirrored.bounds, fpH.bounds);
+  // Branch cell in unmirrored is at x=6 (5 + 1), in mirrored is at x=7 (5 + 2)
+  assert.ok(fpH.cells.some((c) => c.x === 6 && c.y === 6));
+  assert.ok(fpHMirrored.cells.some((c) => c.x === 7 && c.y === 6));
+});
+
+test('Straight channel: supports widths 3, 4, 5 MU with proportional footprint and snaps', () => {
+  const strW3: PlacedChannel = {
+    id: 'str-w3',
+    kind: 'straight',
+    length: 4,
+    widthUnits: 3,
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    category: 'power',
+  };
+  const fpW3 = getChannelFootprint(strW3);
+  assert.equal(fpW3.cells.length, 12); // 4 * 3
+  assert.equal(fpW3.bounds.width, 4);
+  assert.equal(fpW3.bounds.height, 3);
+  const snapsW3 = getChannelSnapPoints(strW3);
+  assert.equal(snapsW3.length, 9); // 3 snaps per lane * 3 lanes
+
+  const strW5: PlacedChannel = {
+    id: 'str-w5',
+    kind: 'straight',
+    length: 2,
+    widthUnits: 5,
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    category: 'power',
+  };
+  const fpW5 = getChannelFootprint(strW5);
+  assert.equal(fpW5.cells.length, 10); // 2 * 5
+  assert.equal(fpW5.bounds.height, 5);
+});
+
+test('T-Channel: trunk 3 MU strictly enforces width 1 MU', () => {
+  const tTrunk3: PlacedChannel = {
+    id: 't-3',
+    kind: 'junction',
+    trunkSpanUnits: 3,
+    branchSpanUnits: 2,
+    widthUnits: 2, // Attempting width 2 on trunk 3
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    category: 'power',
+  };
+  const fp = getChannelFootprint(tTrunk3);
+  // Width clamped to 1: trunk is 3x1 (3 cells), branch is 1x2 (2 cells) -> total 5 cells
+  assert.equal(fp.cells.length, 5);
+  assert.equal(fp.bounds.height, 3); // 1 (trunk) + 2 (branch)
+});
+
+test('Elbow channel: 2x2 MU arm span supports only width 1 MU', () => {
+  // In canonical spec: span 2, w 1 has 3 cells ((0,0), (0,1), (1,1))
+  const elbow2x2: PlacedChannel = {
+    id: 'e-2x2',
+    kind: 'corner',
+    armSpanUnits: 2,
+    widthUnits: 1,
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    category: 'power',
+  };
+  const fp = getChannelFootprint(elbow2x2);
+  assert.equal(fp.cells.length, 3);
+  assert.equal(fp.bounds.width, 2);
+  assert.equal(fp.bounds.height, 2);
+});
+
+test('Manual mount editing: allows clearing all snaps without falling back to defaults', () => {
+  const channel: PlacedChannel = {
+    id: 'test-manual',
+    kind: 'straight',
+    length: 4,
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    category: 'power',
+    connectorMode: 'manual',
+    customMountIndices: [],
+  };
+  const snaps = getChannelSnapPoints(channel);
+  assert.equal(snaps.length, 0); // Correctly returns 0 snaps instead of falling back to default 3 snaps
+});
+
 
 
 

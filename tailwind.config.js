@@ -44,7 +44,8 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Figtree', 'sans-serif'],
+        figtree: ['Figtree', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       }
     },

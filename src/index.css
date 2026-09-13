@@ -15,10 +15,22 @@ body {
   user-select: none;
   background-color: #0E0F12;
   color: #FFFFFF;
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Figtree', system-ui, -apple-system, sans-serif;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
+}
+
+/* Ensure no lingering browser focus outlines or tap highlight flashes */
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus,
+button:focus-visible,
+input:focus,
+input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Custom scrollbars */
@@ -36,3 +48,74 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3E4250;
 }
+
+/* ============================================================ */
+/* Print & PDF Export Stylesheet for BOM                        */
+/* ============================================================ */
+@media print {
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+
+  body {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: auto !important;
+    font-family: 'Figtree', sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide background canvas and other root elements */
+  #root > div > *:not(#bom-modal-container) {
+    display: none !important;
+  }
+
+  #bom-modal-container {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+    inset: auto !important;
+  }
+
+  #bom-modal-box {
+    position: static !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    border: 1px solid #CBD5E1 !important;
+    box-shadow: none !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    overflow: visible !important;
+    border-radius: 12px !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-clean {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    border-color: #E2E8F0 !important;
+  }
+
+  .print-header {
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    border-color: #E2E8F0 !important;
+  }
+
+  .print-text {
+    color: #0F172A !important;
+  }
+
+  .print-text-muted {
+    color: #64748B !important;
+  }
+}
+

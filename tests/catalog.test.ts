@@ -128,11 +128,13 @@ test('Curved channels (R2 to R5): footprint and snap points', () => {
   assert.deepEqual(specR3.snapIndices[0], { x: 0, y: 0 });
   assert.deepEqual(specR3.snapIndices[1], { x: 2, y: 2 });
 
-  // R4 curved channel: includes intermediate support snap
+  // R4 curved channel: terminal snaps only (no intermediate apex snap)
   const specR4 = getCanonicalChannelSpec('curved', undefined, 1, 2, 3, 2, 4);
   assert.equal(specR4.width, 4);
   assert.equal(specR4.height, 4);
-  assert.ok(specR4.snapIndices.length >= 3);
+  assert.equal(specR4.snapIndices.length, 2);
+  assert.deepEqual(specR4.snapIndices[0], { x: 0, y: 0 });
+  assert.deepEqual(specR4.snapIndices[1], { x: 3, y: 3 });
 });
 
 test('Y-Split channels: 3-port geometry and snaps', () => {
@@ -143,6 +145,15 @@ test('Y-Split channels: 3-port geometry and snaps', () => {
   assert.deepEqual(specY.snapIndices[0], { x: 0, y: 0 });
   assert.deepEqual(specY.snapIndices[1], { x: 2, y: 0 });
   assert.deepEqual(specY.snapIndices[2], { x: 1, y: 3 });
+
+  // Default 1 MU branch/trunk
+  const specY1 = getCanonicalChannelSpec('y_split');
+  assert.equal(specY1.width, 3);
+  assert.equal(specY1.height, 3); // 2 (branches/junction) + 1 (trunk)
+  assert.equal(specY1.snapIndices.length, 3);
+  assert.deepEqual(specY1.snapIndices[0], { x: 0, y: 0 });
+  assert.deepEqual(specY1.snapIndices[1], { x: 2, y: 0 });
+  assert.deepEqual(specY1.snapIndices[2], { x: 1, y: 2 });
 });
 
 test('Diagonal (jog) channels: footprint and snap points', () => {

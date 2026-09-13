@@ -6,13 +6,16 @@ import type {
   BOMSummary,
   ChannelCategory,
   ChannelKind,
+  GridPlatform,
   MountDetail,
   MountingType,
   PlacedChannel,
+  TileDefinition,
 } from './types.ts';
 import {
   calculateBoardDimensions,
   DEFAULT_BOARD_CONFIG,
+  generateTileMatrix,
   getChannelSnapCount,
   getChannelUnitLength,
 } from './geometry.ts';
@@ -66,8 +69,8 @@ export function getChannelPartNumber(
       return `MB-CHAN-CRV-R${rad}U${modSuffix}`;
     }
     case 'y_split': {
-      const trunk = yTrunkUnits ?? 2;
-      const branch = yBranchUnits ?? 2;
+      const trunk = yTrunkUnits ?? yBranchUnits ?? 3;
+      const branch = yBranchUnits ?? yTrunkUnits ?? 3;
       return `MB-CHAN-YSPL-${trunk}X${branch}U${modSuffix}`;
     }
     case 'diagonal': {
@@ -118,57 +121,58 @@ export function getChannelDisplayName(
 ): string {
   const w = widthUnits ?? 1;
   const h = heightUnits ?? 1;
+  const unit = pitchMm === 28 ? 'OU' : 'MU';
   const dimTag = w > 1 || h > 1 ? ` · W${w}/H${h}` : '';
 
   switch (kind) {
     case 'straight': {
       const len = Math.max(1, Math.floor(length ?? 2));
       const mm = len * pitchMm;
-      return `Straight Channel (I-Channel) ${len} MU${dimTag} (${mm}mm)`;
+      return `Straight Channel (I-Channel) ${len} ${unit}${dimTag} (${mm}mm)`;
     }
     case 'corner': {
       const span = armSpanUnits ?? 2;
       const mm = span * pitchMm;
-      return `90° Corner (L-Channel) ${span}×${span} MU${dimTag} (${mm}×${mm}mm)`;
+      return `90° Corner (L-Channel) ${span}×${span} ${unit}${dimTag} (${mm}×${mm}mm)`;
     }
     case 'junction': {
       const trunk = trunkSpanUnits ?? 3;
       const branch = branchSpanUnits ?? 2;
-      return `T-Junction ${trunk}×${branch} MU${dimTag} (${trunk * pitchMm}×${branch * pitchMm}mm)`;
+      return `T-Junction ${trunk}×${branch} ${unit}${dimTag} (${trunk * pitchMm}×${branch * pitchMm}mm)`;
     }
     case 'cross':
-      return `4-Way Cross (X-Channel) 3×3 MU${dimTag} (75×75mm)`;
+      return `4-Way Cross (X-Channel) 3×3 ${unit}${dimTag} (${3 * pitchMm}×${3 * pitchMm}mm)`;
     case 'curved': {
       const rad = radiusUnits ?? 2;
       const mm = rad * pitchMm;
-      return `Radial Curved (Curved) R${rad} MU${dimTag} (R${mm}mm)`;
+      return `Radial Curved (Curved) R${rad} ${unit}${dimTag} (R${mm}mm)`;
     }
     case 'y_split': {
-      const trunk = yTrunkUnits ?? 2;
-      const branch = yBranchUnits ?? 2;
-      return `Y-Split (Fork) ${trunk}×${branch} MU${dimTag}`;
+      const trunk = yTrunkUnits ?? yBranchUnits ?? 3;
+      const branch = yBranchUnits ?? yTrunkUnits ?? 3;
+      return `Y-Split (Fork) ${trunk}×${branch} ${unit}${dimTag} (${trunk * pitchMm}×${branch * pitchMm}mm)`;
     }
     case 'diagonal': {
       const len = Math.max(2, Math.floor(length ?? 3));
       const off = offsetUnits ?? 1;
-      return `Diagonal Channel (Jog 45°) ${len}×${off} MU${dimTag} (${len * pitchMm}mm)`;
+      return `Diagonal Channel (Jog 45°) ${len}×${off} ${unit}${dimTag} (${len * pitchMm}mm)`;
     }
     case 'mitred': {
       const armA = mitreArmA ?? 2;
       const armB = mitreArmB ?? 2;
-      return `Mitered Corner (Mitred) ${armA}×${armB} MU${dimTag} (${armA * pitchMm}×${armB * pitchMm}mm)`;
+      return `Mitered Corner (Mitred) ${armA}×${armB} ${unit}${dimTag} (${armA * pitchMm}×${armB * pitchMm}mm)`;
     }
     case 'spool':
-      return 'Cable Spool 3×6 MU (75×150mm)';
+      return `Cable Spool 3×6 ${unit} (${3 * pitchMm}×${6 * pitchMm}mm)`;
     case 'socket_holder':
-      return 'Tessan Multi-Socket Holder 6×6 MU (150×150mm)';
+      return `Tessan Multi-Socket Holder 6×6 ${unit} (${6 * pitchMm}×${6 * pitchMm}mm)`;
     case 'accessory': {
       if (label && label.trim()) {
         return label.trim();
       }
       const w = widthUnits ?? 6;
       const h = length ?? 3;
-      return `Custom Accessory ${w}×${h} MU`;
+      return `Custom Accessory ${w}×${h} ${unit}`;
     }
   }
 }
@@ -203,8 +207,8 @@ export function getChannelDescription(
       return `Underware concentric radial curved corner R${rad} (${rad * 25} mm) for gentle cable bends.`;
     }
     case 'y_split': {
-      const t = yTrunkUnits ?? 2;
-      const b = yBranchUnits ?? 2;
+      const t = yTrunkUnits ?? yBranchUnits ?? 1;
+      const b = yBranchUnits ?? yTrunkUnits ?? 1;
       return `Underware symmetrical 45° Y-split ${t}×${b} MU for cable routing on Multiboard grid.`;
     }
     case 'diagonal': {
@@ -234,50 +238,196 @@ export function getChannelDescription(
 // ============================================================================
 
 /**
- * Aggregates all Multiboard tiles required for the board layout.
+ * Aggregates all Multiboard or openGrid tiles required for the board layout.
  */
-export function aggregateTiles(config: BoardConfig): readonly BOMItem[] {
-  const { cols, rows, tileWidthHoles, tileHeightHoles, holePitchMm } = config;
+export function aggregateTiles(
+  config: BoardConfig,
+  tiles?: readonly TileDefinition[]
+): readonly BOMItem[] {
+  const platform = config.platform ?? 'multiboard';
+  const defaultPitch = platform === 'opengrid' ? 28 : 25;
+  const holePitchMm = config.holePitchMm ?? defaultPitch;
+  const prefix = platform === 'opengrid' ? 'OG' : 'MB';
+
+  const effectiveTiles = (tiles && tiles.length > 0)
+    ? tiles
+    : (config.customTiles && config.customTiles.length > 0)
+      ? config.customTiles
+      : null;
+
+  if (effectiveTiles && effectiveTiles.length > 0) {
+    const groups = new Map<string, { width: number; height: number; count: number }>();
+    for (const t of effectiveTiles) {
+      const key = `${t.widthHoles}x${t.heightHoles}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        groups.set(key, { width: t.widthHoles, height: t.heightHoles, count: 1 });
+      }
+    }
+
+    const items: BOMItem[] = [];
+    for (const [, g] of groups.entries()) {
+      const is8x8 = g.width === 8 && g.height === 8;
+      const is7x7 = g.width === 7 && g.height === 7;
+      const is6x6 = g.width === 6 && g.height === 6;
+      const is5x5 = g.width === 5 && g.height === 5;
+      const is4x4 = g.width === 4 && g.height === 4;
+
+      const partNumber = is8x8
+        ? `${prefix}-TILE-8X8`
+        : is7x7
+          ? `${prefix}-TILE-7X7`
+          : is6x6
+            ? `${prefix}-TILE-6X6`
+            : is5x5
+              ? `${prefix}-TILE-5X5`
+              : is4x4
+                ? `${prefix}-TILE-4X4`
+                : `${prefix}-TILE-${g.width}X${g.height}`;
+
+      const widthMm = g.width * holePitchMm;
+      const heightMm = g.height * holePitchMm;
+
+      let name: string;
+      let description: string;
+
+      if (platform === 'opengrid') {
+        name = is8x8
+          ? 'openGrid Tile (8x8)'
+          : is7x7
+            ? 'openGrid Tile (7x7)'
+            : is6x6
+              ? 'openGrid Tile (6x6)'
+              : is5x5
+                ? 'openGrid Tile (5x5)'
+                : is4x4
+                  ? 'openGrid Tile (4x4)'
+                  : `openGrid Custom Tile (${g.width}x${g.height})`;
+        description = `Standard openGrid modular tile (${widthMm}×${heightMm}mm) with 28mm pitch.`;
+      } else {
+        name = is8x8
+          ? 'Multiboard Standard Tile (8x8)'
+          : is6x6
+            ? 'Multiboard Tile (6x6)'
+            : is4x4
+              ? 'Multiboard Compact Tile (4x4)'
+              : `Multiboard Custom Tile (${g.width}x${g.height})`;
+        description = is8x8
+          ? 'Standard Multiboard 8x8 core grid tile for wall or under-desk cable management.'
+          : is6x6
+            ? 'Multiboard 6x6 mid-size grid tile for compact or medium workspaces.'
+            : is4x4
+              ? 'Multiboard 4x4 compact grid tile for smaller workspaces or tight corners.'
+              : `Custom Multiboard ${g.width}x${g.height} tile (${widthMm}x${heightMm}mm).`;
+      }
+
+      items.push({
+        id: `bom-tile-${partNumber.toLowerCase()}`,
+        name,
+        partNumber,
+        category: 'tiles',
+        categoryLabel: platform === 'opengrid' ? 'openGrid Tile' : 'Tile / Grid',
+        quantity: g.count,
+        unit: 'tiles',
+        description,
+        snapsRequired: 0,
+        specs: {
+          gridHoles: `${g.width} x ${g.height}`,
+          dimensionsMm: `${widthMm} x ${heightMm}`,
+          pitchMm: holePitchMm,
+          platform,
+        },
+      });
+    }
+
+    // Sort descending by tile area (larger tiles first)
+    items.sort((a, b) => {
+      const partsA = a.partNumber.split('-TILE-')[1]?.split('X') || ['1', '1'];
+      const partsB = b.partNumber.split('-TILE-')[1]?.split('X') || ['1', '1'];
+      const areaA = (parseInt(partsA[0], 10) || 1) * (parseInt(partsA[1], 10) || 1);
+      const areaB = (parseInt(partsB[0], 10) || 1) * (parseInt(partsB[1], 10) || 1);
+      return areaB - areaA;
+    });
+
+    return Object.freeze(items);
+  }
+
+  const { cols, rows, tileWidthHoles, tileHeightHoles } = config;
   const totalTileCount = cols * rows;
 
   if (totalTileCount <= 0) return [];
 
   const is8x8 = tileWidthHoles === 8 && tileHeightHoles === 8;
+  const is7x7 = tileWidthHoles === 7 && tileHeightHoles === 7;
   const is6x6 = tileWidthHoles === 6 && tileHeightHoles === 6;
+  const is5x5 = tileWidthHoles === 5 && tileHeightHoles === 5;
   const is4x4 = tileWidthHoles === 4 && tileHeightHoles === 4;
 
   const partNumber = is8x8
-    ? 'MB-TILE-8X8'
-    : is6x6
-      ? 'MB-TILE-6X6'
-      : is4x4
-        ? 'MB-TILE-4X4'
-        : `MB-TILE-${tileWidthHoles}X${tileHeightHoles}`;
+    ? `${prefix}-TILE-8X8`
+    : is7x7
+      ? `${prefix}-TILE-7X7`
+      : is6x6
+        ? `${prefix}-TILE-6X6`
+        : is5x5
+          ? `${prefix}-TILE-5X5`
+          : is4x4
+            ? `${prefix}-TILE-4X4`
+            : `${prefix}-TILE-${tileWidthHoles}X${tileHeightHoles}`;
+
   const widthMm = tileWidthHoles * holePitchMm;
   const heightMm = tileHeightHoles * holePitchMm;
-  const name = is8x8
-    ? 'Multiboard Standard Tile (8x8)'
-    : is6x6
-      ? 'Multiboard Tile (6x6)'
-      : is4x4
-        ? 'Multiboard Compact Tile (4x4)'
-        : `Multiboard Custom Tile (${tileWidthHoles}x${tileHeightHoles})`;
+
+  let name: string;
+  let description: string;
+
+  if (platform === 'opengrid') {
+    name = is8x8
+      ? 'openGrid Tile (8x8)'
+      : is7x7
+        ? 'openGrid Tile (7x7)'
+        : is6x6
+          ? 'openGrid Tile (6x6)'
+          : is5x5
+            ? 'openGrid Tile (5x5)'
+            : is4x4
+              ? 'openGrid Tile (4x4)'
+              : `openGrid Custom Tile (${tileWidthHoles}x${tileHeightHoles})`;
+    description = `Standard openGrid modular tile (${widthMm}×${heightMm}mm) with 28mm pitch.`;
+  } else {
+    name = is8x8
+      ? 'Multiboard Standard Tile (8x8)'
+      : is6x6
+        ? 'Multiboard Tile (6x6)'
+        : is4x4
+          ? 'Multiboard Compact Tile (4x4)'
+          : `Multiboard Custom Tile (${tileWidthHoles}x${tileHeightHoles})`;
+    description = is8x8
+      ? 'Standard Multiboard 8x8 core grid tile for wall or under-desk cable management.'
+      : is6x6
+        ? 'Multiboard 6x6 mid-size grid tile for compact or medium workspaces.'
+        : is4x4
+          ? 'Multiboard 4x4 compact grid tile for smaller workspaces or tight corners.'
+          : `Custom Multiboard ${tileWidthHoles}x${tileHeightHoles} tile (${widthMm}x${heightMm}mm).`;
+  }
 
   const item: BOMItem = {
     id: `bom-tile-${partNumber.toLowerCase()}`,
     name,
     partNumber,
     category: 'tiles',
-    categoryLabel: 'Tile / Grid',
+    categoryLabel: platform === 'opengrid' ? 'openGrid Tile' : 'Tile / Grid',
     quantity: totalTileCount,
     unit: 'tiles',
-    description: `Standard Multiboard modular tile (${widthMm}×${heightMm}mm)`,
+    description,
     snapsRequired: 0,
     specs: {
       gridHoles: `${tileWidthHoles} x ${tileHeightHoles}`,
       dimensionsMm: `${widthMm} x ${heightMm}`,
-      matrixLayout: `${cols} cols x ${rows} rows`,
       pitchMm: holePitchMm,
+      platform,
     },
   };
 
@@ -372,6 +522,13 @@ export function aggregateChannels(
         unitsLength: unitLength,
         lengthMm,
         categories: Array.from(categories).sort().join(', '),
+        length: channel.length ?? 2,
+        widthUnits: channel.widthUnits ?? 1,
+        ...(channel.radiusUnits !== undefined ? { radiusUnits: channel.radiusUnits } : {}),
+        ...(channel.armSpanUnits !== undefined ? { armSpanUnits: channel.armSpanUnits } : {}),
+        ...(channel.trunkSpanUnits !== undefined ? { trunkSpanUnits: channel.trunkSpanUnits } : {}),
+        ...(channel.branchSpanUnits !== undefined ? { branchSpanUnits: channel.branchSpanUnits } : {}),
+        ...(channel.label ? { label: channel.label } : {}),
       },
     });
   }
@@ -387,33 +544,59 @@ export function aggregateChannels(
  */
 export function aggregateSnapConnectors(
   channels: readonly PlacedChannel[],
-  sparePercent: number = 10
+  sparePercent: number = 10,
+  platform: GridPlatform = 'multiboard'
 ): { item: BOMItem; baseCount: number; spareCount: number; totalCount: number } {
+  const targetSnapType = platform === 'opengrid' ? 'opengrid_base_snap' : 'threaded_snap';
   const baseCount = channels.reduce((sum, ch) => {
-    const mType = ch.mountingType ?? 'threaded_snap';
-    return mType === 'threaded_snap' ? sum + getChannelSnapCount(ch) : sum;
+    const mType = ch.mountingType ?? targetSnapType;
+    if (mType === 'none') return sum;
+    if (platform === 'opengrid') {
+      return (mType === 'opengrid_base_snap' || mType === 'opengrid_grip_snap' || mType === 'opengrid_snap')
+        ? sum + getChannelSnapCount(ch)
+        : sum;
+    }
+    return mType === targetSnapType ? sum + getChannelSnapCount(ch) : sum;
   }, 0);
   const spareRate = Math.max(0, sparePercent) / 100;
   const spareCount = baseCount > 0 ? Math.ceil(baseCount * spareRate) : 0;
   const totalCount = baseCount + spareCount;
 
-  const item: BOMItem = {
-    id: 'bom-snaps-underware',
-    name: 'Underware Threaded Snap Connector',
-    partNumber: 'UW-SNAP-THRD',
-    category: 'mounting',
-    categoryLabel: 'Underware Mounting',
-    quantity: totalCount,
-    unit: 'pcs',
-    description: `Threaded mounting snap for Multiboard octagons (+${sparePercent}% spare included)`,
-    snapsRequired: totalCount,
-    specs: {
-      baseRequirement: baseCount,
-      spareAllowancePercent: `${sparePercent}%`,
-      spareQuantity: spareCount,
-      totalToPrintOrOrder: totalCount,
-    },
-  };
+  const item: BOMItem = platform === 'opengrid'
+    ? {
+        id: 'bom-snaps-opengrid',
+        name: 'The Underware channel base snap',
+        partNumber: 'OG-SNAP-BASE',
+        category: 'mounting',
+        categoryLabel: 'openGrid Mounting',
+        quantity: totalCount,
+        unit: 'pcs',
+        description: `Snap connector for openGrid 28mm cells (+${sparePercent}% spare included)`,
+        snapsRequired: totalCount,
+        specs: {
+          baseRequirement: baseCount,
+          spareAllowancePercent: `${sparePercent}%`,
+          spareQuantity: spareCount,
+          totalToPrintOrOrder: totalCount,
+        },
+      }
+    : {
+        id: 'bom-snaps-underware',
+        name: 'Underware Threaded Snap Connector',
+        partNumber: 'UW-SNAP-THRD',
+        category: 'mounting',
+        categoryLabel: 'Underware Mounting',
+        quantity: totalCount,
+        unit: 'pcs',
+        description: `Threaded mounting snap for Multiboard octagons (+${sparePercent}% spare included)`,
+        snapsRequired: totalCount,
+        specs: {
+          baseRequirement: baseCount,
+          spareAllowancePercent: `${sparePercent}%`,
+          spareQuantity: spareCount,
+          totalToPrintOrOrder: totalCount,
+        },
+      };
 
   return { item, baseCount, spareCount, totalCount };
 }
@@ -421,13 +604,16 @@ export function aggregateSnapConnectors(
 /**
  * Aggregates all mounting hardware across channels by mounting system type:
  * - Threaded Snap (+spare%)
+ * - openGrid Base Snap (+spare%)
+ * - openGrid Grip Snap (+spare%)
  * - Direct Screw (1:1)
  * - Multiconnect (1:1)
  */
 export function aggregateMountingHardware(
   channels: readonly PlacedChannel[],
   sparePercent: number = 10,
-  pitchMm: number = 25
+  pitchMm: number = 25,
+  platform: GridPlatform = 'multiboard'
 ): {
   items: readonly BOMItem[];
   mountCountsByType: Record<MountingType, { base: number; spare: number; total: number }>;
@@ -436,6 +622,11 @@ export function aggregateMountingHardware(
 } {
   const mountCountsByType: Record<MountingType, { base: number; spare: number; total: number }> = {
     threaded_snap: { base: 0, spare: 0, total: 0 },
+    opengrid_base_snap: { base: 0, spare: 0, total: 0 },
+    opengrid_grip_snap: { base: 0, spare: 0, total: 0 },
+    opengrid_snap: { base: 0, spare: 0, total: 0 },
+    none: { base: 0, spare: 0, total: 0 },
+    direct_snap: { base: 0, spare: 0, total: 0 },
     direct_screw: { base: 0, spare: 0, total: 0 },
     multiconnect: { base: 0, spare: 0, total: 0 },
     standard_snap: { base: 0, spare: 0, total: 0 },
@@ -447,9 +638,39 @@ export function aggregateMountingHardware(
 
   const mountDetails: MountDetail[] = [];
   let totalMounts = 0;
+  const defaultMount: MountingType = platform === 'opengrid' ? 'opengrid_base_snap' : 'threaded_snap';
 
   for (const ch of channels) {
-    const mType: MountingType = ch.mountingType ?? 'threaded_snap';
+    const mType: MountingType = ch.mountingType ?? defaultMount;
+
+    if (mType === 'none') {
+      const channelName = getChannelDisplayName(
+        ch.kind,
+        ch.length,
+        pitchMm,
+        ch.widthUnits,
+        ch.heightUnits,
+        ch.armSpanUnits,
+        ch.trunkSpanUnits,
+        ch.branchSpanUnits,
+        ch.radiusUnits,
+        ch.mitreArmA,
+        ch.mitreArmB,
+        ch.offsetUnits,
+        ch.yTrunkUnits,
+        ch.yBranchUnits,
+        ch.label
+      );
+      mountDetails.push({
+        channelId: ch.id,
+        channelName,
+        channelKind: ch.kind,
+        mountingType: 'none',
+        mountCount: 0,
+      });
+      continue;
+    }
+
     const count = getChannelSnapCount(ch);
     totalMounts += count;
 
@@ -485,12 +706,35 @@ export function aggregateMountingHardware(
   }
 
   // Calculate spares:
+  const spareRate = Math.max(0, sparePercent) / 100;
+
   // Threaded Snap includes spare percentage
   const snapBase = mountCountsByType.threaded_snap.base;
-  const spareRate = Math.max(0, sparePercent) / 100;
   const snapSpare = snapBase > 0 ? Math.ceil(snapBase * spareRate) : 0;
   mountCountsByType.threaded_snap.spare = snapSpare;
   mountCountsByType.threaded_snap.total = snapBase + snapSpare;
+
+  // openGrid Legacy Snap
+  const ogLegacySnapCount = mountCountsByType.opengrid_snap.base;
+  const ogLegacySnapSpare = ogLegacySnapCount > 0 ? Math.ceil(ogLegacySnapCount * spareRate) : 0;
+  mountCountsByType.opengrid_snap.spare = ogLegacySnapSpare;
+  mountCountsByType.opengrid_snap.total = ogLegacySnapCount + ogLegacySnapSpare;
+
+  // openGrid Base Snap
+  const ogBaseSnapCount = mountCountsByType.opengrid_base_snap.base;
+  const ogBaseSnapSpare = ogBaseSnapCount > 0 ? Math.ceil(ogBaseSnapCount * spareRate) : 0;
+  mountCountsByType.opengrid_base_snap.spare = ogBaseSnapSpare;
+  mountCountsByType.opengrid_base_snap.total = ogBaseSnapCount + ogBaseSnapSpare;
+
+  // openGrid Grip Snap
+  const ogGripSnapCount = mountCountsByType.opengrid_grip_snap.base;
+  const ogGripSnapSpare = ogGripSnapCount > 0 ? Math.ceil(ogGripSnapCount * spareRate) : 0;
+  mountCountsByType.opengrid_grip_snap.spare = ogGripSnapSpare;
+  mountCountsByType.opengrid_grip_snap.total = ogGripSnapCount + ogGripSnapSpare;
+
+  // Direct Snap (Integrated in 3D printed body): 0% spare, no separate hardware items
+  mountCountsByType.direct_snap.spare = 0;
+  mountCountsByType.direct_snap.total = mountCountsByType.direct_snap.base;
 
   // Direct Screw: 0% spare (1:1)
   mountCountsByType.direct_screw.spare = 0;
@@ -522,6 +766,66 @@ export function aggregateMountingHardware(
     });
   }
 
+  if (mountCountsByType.opengrid_snap.total > 0) {
+    items.push({
+      id: 'bom-mount-opengrid-snap',
+      name: 'Underware openGrid Snap',
+      partNumber: 'OG-SNAP-UW',
+      category: 'mounting',
+      categoryLabel: 'Underware Mounting',
+      quantity: mountCountsByType.opengrid_snap.total,
+      unit: 'pcs',
+      description: `Snap connector for openGrid 28mm cells (${ogLegacySnapCount} base + ${ogLegacySnapSpare} spare +${sparePercent}%)`,
+      snapsRequired: mountCountsByType.opengrid_snap.total,
+      specs: {
+        baseRequirement: ogLegacySnapCount,
+        spareAllowancePercent: `${sparePercent}%`,
+        spareQuantity: ogLegacySnapSpare,
+        totalToPrintOrOrder: mountCountsByType.opengrid_snap.total,
+      },
+    });
+  }
+
+  if (mountCountsByType.opengrid_base_snap.total > 0) {
+    items.push({
+      id: 'bom-mount-opengrid-base-snap',
+      name: 'The Underware channel base snap',
+      partNumber: 'OG-SNAP-BASE',
+      category: 'mounting',
+      categoryLabel: 'openGrid Mounting',
+      quantity: mountCountsByType.opengrid_base_snap.total,
+      unit: 'pcs',
+      description: `Underware base snap for openGrid 28mm cells (${ogBaseSnapCount} base + ${ogBaseSnapSpare} spare +${sparePercent}%)`,
+      snapsRequired: mountCountsByType.opengrid_base_snap.total,
+      specs: {
+        baseRequirement: ogBaseSnapCount,
+        spareAllowancePercent: `${sparePercent}%`,
+        spareQuantity: ogBaseSnapSpare,
+        totalToPrintOrOrder: mountCountsByType.opengrid_base_snap.total,
+      },
+    });
+  }
+
+  if (mountCountsByType.opengrid_grip_snap.total > 0) {
+    items.push({
+      id: 'bom-mount-opengrid-grip-snap',
+      name: 'The Underware grip channel snap',
+      partNumber: 'OG-SNAP-GRIP',
+      category: 'mounting',
+      categoryLabel: 'openGrid Mounting',
+      quantity: mountCountsByType.opengrid_grip_snap.total,
+      unit: 'pcs',
+      description: `Underware grip clamp snap for openGrid 28mm cells (${ogGripSnapCount} base + ${ogGripSnapSpare} spare +${sparePercent}%)`,
+      snapsRequired: mountCountsByType.opengrid_grip_snap.total,
+      specs: {
+        baseRequirement: ogGripSnapCount,
+        spareAllowancePercent: `${sparePercent}%`,
+        spareQuantity: ogGripSnapSpare,
+        totalToPrintOrOrder: mountCountsByType.opengrid_grip_snap.total,
+      },
+    });
+  }
+
   if (mountCountsByType.direct_screw.total > 0) {
     items.push({
       id: 'bom-mount-direct-screw',
@@ -543,13 +847,13 @@ export function aggregateMountingHardware(
   if (mountCountsByType.multiconnect.total > 0) {
     items.push({
       id: 'bom-mount-multiconnect',
-      name: 'Multiconnect Connector (Dovetail)',
-      partNumber: 'MC-CONN-SLIDE',
+      name: 'Multiconnect Dovetail Connector',
+      partNumber: 'MC-CONN-DOVE',
       category: 'mounting',
-      categoryLabel: 'Multiboard Mounting',
+      categoryLabel: 'Multiconnect System',
       quantity: mountCountsByType.multiconnect.total,
       unit: 'pcs',
-      description: 'Dovetail slide connector for Multiconnect accessories (1:1)',
+      description: 'Dovetail slide-in bracket connector for Multiconnect accessories (1:1)',
       snapsRequired: mountCountsByType.multiconnect.total,
       specs: {
         baseRequirement: mountCountsByType.multiconnect.base,
@@ -557,6 +861,9 @@ export function aggregateMountingHardware(
       },
     });
   }
+
+  // Sort mounting items deterministically
+  items.sort((a, b) => a.partNumber.localeCompare(b.partNumber));
 
   return {
     items: Object.freeze(items),
@@ -571,26 +878,27 @@ export function aggregateMountingHardware(
 // ============================================================================
 
 /**
- * Generates the complete Bill of Materials from a board state.
- *
- * @param boardState Current state of the planner board
- * @param spareSnapPercent Percentage of extra snap connectors to include (default: 10)
+ * Generates a comprehensive Bill of Materials for a complete board state.
  */
 export function generateBOM(
   boardState: BoardState,
   spareSnapPercent: number = 10
 ): BillOfMaterials {
-  const { config, channels } = boardState;
+  const { config, channels, tiles } = boardState;
   const safeConfig = config ?? DEFAULT_BOARD_CONFIG;
+  const platform = safeConfig.platform ?? 'multiboard';
   const dims = calculateBoardDimensions(safeConfig);
 
+  const effectiveTiles = tiles && tiles.length > 0 ? tiles : generateTileMatrix(safeConfig);
+
   // 1. Tiles
-  const tileItems = aggregateTiles(safeConfig);
-  const totalTiles = safeConfig.cols * safeConfig.rows;
-  const tileTypeKey = `${safeConfig.tileWidthHoles}x${safeConfig.tileHeightHoles}`;
-  const tileCountByType: Record<string, number> = {
-    [tileTypeKey]: totalTiles,
-  };
+  const tileItems = aggregateTiles(safeConfig, effectiveTiles);
+  const totalTiles = tileItems.reduce((sum, item) => sum + item.quantity, 0);
+  const tileCountByType: Record<string, number> = {};
+  for (const item of tileItems) {
+    const key = item.partNumber.replace(/^(MB|OG)-TILE-/, '');
+    tileCountByType[key] = item.quantity;
+  }
 
   // 2. Channels
   const channelItems = aggregateChannels(channels, safeConfig.holePitchMm);
@@ -628,11 +936,21 @@ export function generateBOM(
   const totalChannelLengthMm = totalChannelLengthUnits * safeConfig.holePitchMm;
 
   // 3. Mounting Hardware
-  const mountHardware = aggregateMountingHardware(channels, spareSnapPercent, safeConfig.holePitchMm);
-  const snapCounts = mountHardware.mountCountsByType.threaded_snap;
+  const mountHardware = aggregateMountingHardware(channels, spareSnapPercent, safeConfig.holePitchMm, platform);
+  const snapCounts = platform === 'opengrid'
+    ? {
+        base: mountHardware.mountCountsByType.opengrid_base_snap.base + mountHardware.mountCountsByType.opengrid_grip_snap.base + mountHardware.mountCountsByType.opengrid_snap.base,
+        spare: mountHardware.mountCountsByType.opengrid_base_snap.spare + mountHardware.mountCountsByType.opengrid_grip_snap.spare + mountHardware.mountCountsByType.opengrid_snap.spare,
+        total: mountHardware.mountCountsByType.opengrid_base_snap.total + mountHardware.mountCountsByType.opengrid_grip_snap.total + mountHardware.mountCountsByType.opengrid_snap.total,
+      }
+    : mountHardware.mountCountsByType.threaded_snap;
 
   // Combine items: tiles, channels, mounting hardware
-  const allItems: BOMItem[] = [...tileItems, ...channelItems, ...mountHardware.items];
+  const allItems: BOMItem[] = [
+    ...tileItems,
+    ...channelItems,
+    ...mountHardware.items,
+  ];
 
   const summary: BOMSummary = {
     totalTiles,
@@ -640,13 +958,13 @@ export function generateBOM(
     totalChannels,
     totalChannelLengthUnits,
     totalChannelLengthMm,
-    channelsByCategory,
-    channelsByKind,
+    channelsByCategory: Object.freeze(channelsByCategory),
+    channelsByKind: Object.freeze(channelsByKind),
+    totalMounts: mountHardware.totalMounts,
     baseSnapCount: snapCounts.base,
     spareSnapPercent,
     spareSnapCount: snapCounts.spare,
     totalSnapCountWithSpares: snapCounts.total,
-    totalMounts: mountHardware.totalMounts,
     mountCountsByType: mountHardware.mountCountsByType,
     mountDetails: mountHardware.mountDetails,
   };
@@ -654,6 +972,7 @@ export function generateBOM(
   return {
     generatedAt: new Date().toISOString(),
     boardDimensions: {
+      platform,
       cols: safeConfig.cols,
       rows: safeConfig.rows,
       totalHolesX: dims.totalHolesX,
@@ -699,13 +1018,18 @@ export function formatBOMAsMarkdown(bom: BillOfMaterials): string {
   lines.push('| Hardware | Category | Quantity | Notes |');
   lines.push('| :--- | :--- | :---: | :--- |');
 
+  const platform = bom.boardDimensions?.platform ?? 'multiboard';
+  const platformName = platform === 'opengrid' ? 'openGrid' : 'Multiboard';
+  const platformPitch = platform === 'opengrid' ? '28 mm' : '25 mm';
+  const unitLabel = platform === 'opengrid' ? '1 OU' : '1 MU';
+
   const mountItems = items.filter((i) => i.category === 'mounting');
   for (const item of mountItems) {
     lines.push(`| **${item.name}** | ${item.categoryLabel} | **${item.quantity} ${item.unit}** | ${item.description} |`);
   }
 
   lines.push('');
-  lines.push('### MULTIBOARD TILES');
+  lines.push(`### ${platformName.toUpperCase()} TILES`);
   lines.push('| Tile Module | Form Factor | Quantity | Dimensions |');
   lines.push('| :--- | :--- | :---: | :--- |');
 
@@ -716,7 +1040,7 @@ export function formatBOMAsMarkdown(bom: BillOfMaterials): string {
 
   lines.push('');
   lines.push('---');
-  lines.push('*Multiboard Standard 25 mm (1 MU = 25 mm). Underplan is an open community planning tool and does not represent an official manufacturing authority.*');
+  lines.push(`*${platformName} Standard ${platformPitch} (${unitLabel} = ${platformPitch}). Underplan is an open community planning tool and does not represent an official manufacturing authority.*`);
   lines.push('');
   return lines.join('\n');
 }
@@ -727,6 +1051,8 @@ export function formatBOMAsMarkdown(bom: BillOfMaterials): string {
 export function formatBOMAsCSV(bom: BillOfMaterials): string {
   const { items } = bom;
   const escapeCsv = (val: string | number) => `"${String(val).replace(/"/g, '""')}"`;
+  const platform = bom.boardDimensions?.platform ?? 'multiboard';
+  const platformGridName = platform === 'opengrid' ? 'openGrid Grid' : 'Multiboard Grid';
 
   const rows = [
     ['Section', 'Part / Component', 'Category', 'Quantity', 'Details / Mounting'].map(escapeCsv).join(','),
@@ -737,7 +1063,7 @@ export function formatBOMAsCSV(bom: BillOfMaterials): string {
       ? 'Underware Channels'
       : item.category === 'mounting'
         ? 'Mounting Systems'
-        : 'Multiboard Grid';
+        : platformGridName;
     const cat = item.categoryLabel || item.category;
     const snaps = item.snapsRequired ? `${item.snapsRequired} mounts` : item.description;
 

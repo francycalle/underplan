@@ -7,8 +7,10 @@ import {
   BoardState,
   CustomCategory,
   CustomAccessoryDefinition,
+  MountingType,
+  ProjectItem,
 } from './lib/types';
-import { DEFAULT_BOARD_CONFIG, generateTileMatrix, fitBoardToViewport } from './lib/geometry';
+import { DEFAULT_BOARD_CONFIG, generateTileMatrix, fitBoardToViewport, rotatePlacedChannel, mirrorPlacedChannel, isChannelOutOfBounds } from './lib/geometry';
 import { generateBOM, formatBOMAsCSV, formatBOMAsMarkdown } from './lib/bom';
 import { exportSvgAsPng, exportSvgDirect } from './lib/exportMap';
 
@@ -34,6 +36,9 @@ const STORAGE_KEY_CHANNELS = 'underplan_channels';
 const STORAGE_KEY_CATEGORIES = 'underplan_categories';
 const STORAGE_KEY_ACCESSORIES = 'underplan_accessories';
 const STORAGE_KEY_TITLE = 'underplan_project_title';
+const STORAGE_KEY_PROJECTS = 'underplan_saved_projects';
+const STORAGE_KEY_ACTIVE_PROJECT_ID = 'underplan_active_project_id';
+const STORAGE_KEY_ACTIVE_CATEGORY = 'underplan_active_category';
 
 export default function App() {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -72,6 +77,48 @@ export default function App() {
   });
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
 
+  // Projects state (persisted)
+  const [projects, setProjects] = useState<ProjectItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PROJECTS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Could not restore projects from localStorage', e);
+    }
+    const initialTitle = localStorage.getItem(STORAGE_KEY_TITLE) || 'Pasticcio';
+    let initialConfig = DEFAULT_BOARD_CONFIG;
+    try {
+      const savedCfg = localStorage.getItem(STORAGE_KEY_CONFIG);
+      if (savedCfg) initialConfig = JSON.parse(savedCfg);
+    } catch {}
+    let initialChannels = DEMO_CHANNELS;
+    try {
+      const savedCh = localStorage.getItem(STORAGE_KEY_CHANNELS);
+      if (savedCh) initialChannels = JSON.parse(savedCh);
+    } catch {}
+
+    return [
+      {
+        id: 'proj_default',
+        name: initialTitle,
+        boardConfig: initialConfig,
+        channels: initialChannels,
+        updatedAt: Date.now(),
+      },
+    ];
+  });
+
+  const [activeProjectId, setActiveProjectId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_ACTIVE_PROJECT_ID) || 'proj_default';
+    } catch {
+      return 'proj_default';
+    }
+  });
+
   // Custom Categories state (persisted)
   const [categories, setCategories] = useState<CustomCategory[]>(() => {
     try {
@@ -94,28 +141,41 @@ export default function App() {
     return [
       { id: 'acc-loop', name: 'Cable Loop', widthMU: 3, heightMU: 3 },
       { id: 'acc-socket', name: 'Multi-socket', widthMU: 6, heightMU: 3 },
-      { id: 'acc-loop-max', name: 'Cable Loop Max', widthMU: 6, heightMU: 3 },
+      { id: 'acc-loop-max', name: 'Cable Loop', widthMU: 3, heightMU: 3 },
     ];
   });
   const [activeAccessoryId, setActiveAccessoryId] = useState<string | null>('acc-loop');
 
   // Interaction tools & placement state
   const [activeTool, setActiveTool] = useState<ToolType>('select');
-  const [activeCategory, setActiveCategory] = useState<ChannelCategory>('hdmi');
-  const [straightLength, setStraightLength] = useState<number>(3);
+  const [activeCategory, setActiveCategory] = useState<ChannelCategory>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_ACTIVE_CATEGORY);
+      if (saved) return saved as ChannelCategory;
+    } catch {}
+    return 'power';
+  });
+  const [placementCategory, setPlacementCategory] = useState<ChannelCategory | null>(null);
+  const [straightLength, setStraightLength] = useState<number>(10);
+  const [channelWidthUnits, setChannelWidthUnits] = useState<number>(1);
+  const [placementMountingType, setPlacementMountingType] = useState<MountingType>('threaded_snap');
   const [placementRotation, setPlacementRotation] = useState<Rotation>(0);
+  const [placementMirrored, setPlacementMirrored] = useState<boolean>(false);
 
   // Parametric state for Underware 2.0 parts
   const [curvedRadius, setCurvedRadius] = useState<number>(2);
+  const [armSpanUnits, setArmSpanUnits] = useState<number>(2);
+  const [trunkSpanUnits, setTrunkSpanUnits] = useState<number>(3);
+  const [branchSpanUnits, setBranchSpanUnits] = useState<number>(2);
   const [mitreArmA, setMitreArmA] = useState<number>(2);
   const [mitreArmB, setMitreArmB] = useState<number>(2);
   const [offsetUnits, setOffsetUnits] = useState<number>(1);
-  const [yTrunkUnits, setYTrunkUnits] = useState<number>(2);
-  const [yBranchUnits, setYBranchUnits] = useState<number>(2);
+  const [yTrunkUnits, setYTrunkUnits] = useState<number>(1);
+  const [yBranchUnits, setYBranchUnits] = useState<number>(1);
 
-  // Pan & Zoom state synchronized across Canvas and Dock
+  // Pan & Zoom state centered for viewport
   const [zoom, setZoom] = useState<number>(1.0);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 90, y: 80 });
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 260, y: 160 });
 
   // BOM Drawer and Toast state
   const [isBOMOpen, setIsBOMOpen] = useState(false);
@@ -144,8 +204,9 @@ export default function App() {
 
       const key = e.key.toLowerCase();
 
-      // Deselect on Escape
+      // Deselect on Escape and clean DOM focus
       if (e.key === 'Escape') {
+        (document.activeElement as HTMLElement)?.blur();
         setSelectedChannelId(null);
         setActiveTool('select');
         setIsEditingMounts(false);
@@ -160,20 +221,17 @@ export default function App() {
         return;
       }
 
-      // Rotate selected channel or placement
+      // Rotate selected channel or placement (every 90°)
       if (key === 'r') {
         e.preventDefault();
         if (selectedChannelId) {
-          setChannels((prev) =>
-            prev.map((ch) => {
-              if (ch.id === selectedChannelId) {
-                const nextRot = (((ch.rotation + 90) % 360) as Rotation);
-                return { ...ch, rotation: nextRot };
-              }
-              return ch;
-            })
-          );
-          showToast('Channel rotated 90°', 'info');
+          const selected = channels.find((c) => c.id === selectedChannelId);
+          if (selected) {
+            const rotated = rotatePlacedChannel(selected, 90, boardConfig);
+            setChannels((prev) =>
+              prev.map((ch) => (ch.id === selectedChannelId ? rotated : ch))
+            );
+          }
         } else {
           setPlacementRotation((prev) => (((prev + 90) % 360) as Rotation));
         }
@@ -193,9 +251,13 @@ export default function App() {
               y: selected.position.y + 1,
             },
           };
-          setChannels((prev) => [...prev, cloned]);
-          setSelectedChannelId(cloned.id);
-          showToast('Channel duplicated', 'success');
+          if (!isChannelOutOfBounds(cloned, boardConfig)) {
+            setChannels((prev) => [...prev, cloned]);
+            setSelectedChannelId(cloned.id);
+            showToast('Channel duplicated', 'success');
+          } else {
+            showToast('Cannot duplicate: outside board boundaries', 'warning');
+          }
         }
         return;
       }
@@ -261,6 +323,21 @@ export default function App() {
     }
   }, [categories]);
 
+  // Ensure activeCategory always points to a valid category in categories
+  useEffect(() => {
+    if (categories.length > 0 && !categories.some((c) => c.id === activeCategory)) {
+      setActiveCategory(categories[0].id as any);
+    }
+  }, [categories, activeCategory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_CATEGORY, activeCategory);
+    } catch (e) {
+      console.error('Failed to save activeCategory to localStorage', e);
+    }
+  }, [activeCategory]);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_ACCESSORIES, JSON.stringify(customAccessories));
@@ -277,18 +354,164 @@ export default function App() {
     }
   }, [projectTitle]);
 
+  // Sync active project with current channels, boardConfig, and projectTitle
+  useEffect(() => {
+    setProjects((prev) => {
+      const exists = prev.some((p) => p.id === activeProjectId);
+      if (!exists) {
+        return [
+          ...prev,
+          {
+            id: activeProjectId,
+            name: projectTitle,
+            boardConfig,
+            channels,
+            updatedAt: Date.now(),
+          },
+        ];
+      }
+      return prev.map((p) =>
+        p.id === activeProjectId
+          ? {
+              ...p,
+              name: projectTitle,
+              boardConfig,
+              channels,
+              updatedAt: Date.now(),
+            }
+          : p
+      );
+    });
+  }, [channels, boardConfig, projectTitle, activeProjectId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
+    } catch (e) {
+      console.error('Failed to save projects to localStorage', e);
+    }
+  }, [projects]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_PROJECT_ID, activeProjectId);
+    } catch (e) {
+      console.error('Failed to save activeProjectId to localStorage', e);
+    }
+  }, [activeProjectId]);
+
+  const handleSelectProject = (projectId: string) => {
+    const target = projects.find((p) => p.id === projectId);
+    if (!target) return;
+    setActiveProjectId(target.id);
+    setProjectTitle(target.name);
+    setBoardConfig(target.boardConfig);
+    if (target.boardConfig.platform === 'opengrid') {
+      setPlacementMountingType('opengrid_snap');
+    } else {
+      setPlacementMountingType('threaded_snap');
+    }
+    setChannels(target.channels);
+    setSelectedChannelId(null);
+    setActiveTool('select');
+    setIsEditingMounts(false);
+    setPlacementCategory(null);
+    showToast(`Switched to "${target.name}"`, 'success');
+  };
+
+  const handleCreateProject = (name?: string, config?: BoardConfig) => {
+    const trimmed = name?.trim() || `Setup ${projects.length + 1}`;
+    const newId = `proj_${Date.now()}`;
+    const newConfig = config || DEFAULT_BOARD_CONFIG;
+    const newProj: ProjectItem = {
+      id: newId,
+      name: trimmed,
+      boardConfig: newConfig,
+      channels: [],
+      updatedAt: Date.now(),
+    };
+    setProjects((prev) => [...prev, newProj]);
+    setActiveProjectId(newId);
+    setProjectTitle(trimmed);
+    setBoardConfig(newConfig);
+    if (newConfig.platform === 'opengrid') {
+      setPlacementMountingType('opengrid_snap');
+    } else {
+      setPlacementMountingType('threaded_snap');
+    }
+    setChannels([]);
+    setSelectedChannelId(null);
+    setActiveTool('select');
+    setIsEditingMounts(false);
+    setPlacementCategory(null);
+    showToast(`Created "${trimmed}"`, 'success');
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    if (projects.length <= 1) {
+      showToast('Cannot delete the only project', 'warning');
+      return;
+    }
+    const remaining = projects.filter((p) => p.id !== projectId);
+    setProjects(remaining);
+    if (activeProjectId === projectId) {
+      const next = remaining[0];
+      setActiveProjectId(next.id);
+      setProjectTitle(next.name);
+      setBoardConfig(next.boardConfig);
+      setChannels(next.channels);
+      setSelectedChannelId(null);
+      setActiveTool('select');
+      setIsEditingMounts(false);
+      setPlacementCategory(null);
+    }
+    showToast('Project deleted', 'info');
+  };
+
+  const handleDuplicateProject = (projectId: string) => {
+    const source = projects.find((p) => p.id === projectId);
+    if (!source) return;
+    const copyName = `${source.name} (Copy)`;
+    const newId = `proj_${Date.now()}`;
+    const copyProj: ProjectItem = {
+      id: newId,
+      name: copyName,
+      boardConfig: { ...source.boardConfig },
+      channels: JSON.parse(JSON.stringify(source.channels)),
+      updatedAt: Date.now(),
+    };
+    setProjects((prev) => [...prev, copyProj]);
+    setActiveProjectId(newId);
+    setProjectTitle(copyName);
+    setBoardConfig(copyProj.boardConfig);
+    setChannels(copyProj.channels);
+    setSelectedChannelId(null);
+    setActiveTool('select');
+    setIsEditingMounts(false);
+    setPlacementCategory(null);
+    showToast(`Duplicated "${source.name}"`, 'success');
+  };
+
   const handleUpdateConfig = (newConfig: Partial<BoardConfig>) => {
     setBoardConfig((prev) => {
       const updated = { ...prev, ...newConfig };
+      const pitch = updated.holePitchMm || (updated.platform === 'opengrid' ? 28 : 25);
       const totalTiles = updated.cols * updated.rows;
       showToast(
-        `Surface updated: ${totalTiles} tiles (${updated.cols * (updated.tileWidthHoles || 8) * 25}×${
-          updated.rows * (updated.tileHeightHoles || 8) * 25
+        `Surface updated: ${totalTiles} tiles (${updated.cols * (updated.tileWidthHoles || 8) * pitch}×${
+          updated.rows * (updated.tileHeightHoles || 8) * pitch
         }mm)`,
         'info'
       );
       return updated;
     });
+    if (newConfig.platform) {
+      if (newConfig.platform === 'opengrid') {
+        setPlacementMountingType((prev) => (prev === 'threaded_snap' || prev === 'direct_snap' || prev === 'direct_screw' || prev === 'multiconnect' ? 'opengrid_base_snap' : prev));
+      } else if (newConfig.platform === 'multiboard') {
+        setPlacementMountingType((prev) => (prev === 'opengrid_base_snap' || prev === 'opengrid_grip_snap' || prev === 'opengrid_snap' ? 'threaded_snap' : prev));
+      }
+    }
   };
 
   const handleClearBoard = () => {
@@ -380,6 +603,19 @@ export default function App() {
     setPlacementRotation((prev) => (((prev + 90) % 360) as Rotation));
   };
 
+  const handleMirrorPlacement = () => {
+    setPlacementRotation((prev) => (((360 - prev) % 360) as Rotation));
+    setPlacementMirrored((prev) => !prev);
+  };
+
+  const handleMirrorChannel = (channel: PlacedChannel) => {
+    const mirrored = mirrorPlacedChannel(channel, boardConfig);
+    setChannels((prev) =>
+      prev.map((ch) => (ch.id === channel.id ? mirrored : ch))
+    );
+    showToast('T-Channel mirrored (DX ↔ SX)', 'info');
+  };
+
   const handleAddCategory = (newCategory: CustomCategory) => {
     setCategories((prev) => [...prev, newCategory]);
     setActiveCategory(newCategory.id as any);
@@ -392,6 +628,9 @@ export default function App() {
     if (activeCategory === categoryId) {
       const fallback = categories.find((c) => c.id !== categoryId);
       if (fallback) setActiveCategory(fallback.id as any);
+    }
+    if (placementCategory === categoryId) {
+      setPlacementCategory(null);
     }
     showToast('Category removed', 'info');
   };
@@ -420,14 +659,20 @@ export default function App() {
     showToast('Accessory removed', 'info');
   };
 
+  const handleUpdateAccessory = (updated: CustomAccessoryDefinition) => {
+    setCustomAccessories((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+    showToast(`Accessory "${updated.name}" updated`, 'success');
+  };
+
   const handleFitToScreen = () => {
     const fit = fitBoardToViewport(boardConfig, window.innerWidth, window.innerHeight);
     setZoom(fit.zoom);
     setPan(fit.pan);
   };
 
+
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#080A10] text-slate-100 overflow-hidden font-sans select-none relative">
+    <div className="flex h-screen w-screen flex-col bg-[#0E0F12] text-slate-100 overflow-hidden font-sans select-none relative">
       {/* Top Navigation Bar (Hidden in Zen Mode) */}
       {!isZenMode && (
         <Header
@@ -440,14 +685,24 @@ export default function App() {
           onExportSVG={handleExportSVG}
           onToggleBOMDrawer={() => setIsBOMOpen(true)}
           channelCount={channels.length}
-          snapCount={bom.summary.totalSnapCountWithSpares}
+          snapCount={bom.summary.totalMounts}
           categories={categories}
           activeCategory={activeCategory}
-          onSelectCategory={(catId) => setActiveCategory(catId as any)}
+          onSelectCategory={(catId) => {
+            setActiveCategory(catId as any);
+            setPlacementCategory(catId as any);
+          }}
           onAddCategory={handleAddCategory}
           onDeleteCategory={handleDeleteCategory}
+          onUpdateCategory={handleUpdateCategory}
           projectTitle={projectTitle}
           onUpdateTitle={setProjectTitle}
+          projects={projects}
+          activeProjectId={activeProjectId}
+          onSelectProject={handleSelectProject}
+          onCreateProject={handleCreateProject}
+          onDeleteProject={handleDeleteProject}
+          onDuplicateProject={handleDuplicateProject}
         />
       )}
 
@@ -459,21 +714,34 @@ export default function App() {
           selectedChannelId={selectedChannelId}
           onSelectChannel={(id) => {
             setSelectedChannelId(id);
-            if (id) setActiveTool('select');
+            if (id) {
+              setActiveTool('select');
+              setPlacementCategory(null);
+            }
           }}
           onUpdateChannel={handleUpdateChannel}
           onDeleteChannel={handleDeleteChannel}
           onAddChannel={handleAddChannel}
           activeTool={activeTool}
-          onResetTool={() => setActiveTool('select')}
+          onResetTool={() => {
+            setActiveTool('select');
+            setPlacementCategory(null);
+          }}
           activeCategory={activeCategory}
+          placementCategory={placementCategory}
           placementRotation={placementRotation}
+          placementMirrored={placementMirrored}
           onRotatePlacement={handleRotatePlacement}
           straightLength={straightLength}
+          channelWidthUnits={channelWidthUnits}
+          placementMountingType={placementMountingType}
           categories={categories}
           isEditingMounts={isEditingMounts}
           onToggleMountEdit={() => setIsEditingMounts((prev) => !prev)}
           curvedRadius={curvedRadius}
+          armSpanUnits={armSpanUnits}
+          trunkSpanUnits={trunkSpanUnits}
+          branchSpanUnits={branchSpanUnits}
           mitreArmA={mitreArmA}
           mitreArmB={mitreArmB}
           offsetUnits={offsetUnits}
@@ -488,7 +756,7 @@ export default function App() {
           onPanChange={setPan}
         />
 
-        {/* Floating Right Inspector Panel (Opens when a channel is selected) */}
+        {/* Floating Right Inspector Panel (Opens when a channel is selected or when a channel tool is clicked) */}
         {!isZenMode && (
           <InspectorPanel
             boardConfig={boardConfig}
@@ -498,25 +766,58 @@ export default function App() {
             onUpdateChannel={handleUpdateChannel}
             onDeleteChannel={handleDeleteChannel}
             onDuplicateChannel={handleDuplicateChannel}
-            onClose={() => setSelectedChannelId(null)}
+            onClose={() => {
+              setSelectedChannelId(null);
+              if (activeTool !== 'measure') setActiveTool('select');
+            }}
             isEditingMounts={isEditingMounts}
             onToggleMountEdit={() => setIsEditingMounts((prev) => !prev)}
+            activeTool={activeTool}
+            straightLength={straightLength}
+            onSetStraightLength={setStraightLength}
+            channelWidthUnits={channelWidthUnits}
+            onSetChannelWidthUnits={setChannelWidthUnits}
+            activeCategory={activeCategory}
+            placementCategory={placementCategory}
+            onSetPlacementCategory={(catId) => setPlacementCategory(catId as any)}
+            placementMountingType={placementMountingType}
+            onSetPlacementMountingType={setPlacementMountingType}
+            armSpanUnits={armSpanUnits}
+            onSetArmSpanUnits={setArmSpanUnits}
+            curvedRadius={curvedRadius}
+            onSetCurvedRadius={setCurvedRadius}
+            trunkSpanUnits={trunkSpanUnits}
+            onSetTrunkSpanUnits={setTrunkSpanUnits}
+            branchSpanUnits={branchSpanUnits}
+            onSetBranchSpanUnits={setBranchSpanUnits}
+            yTrunkUnits={yTrunkUnits}
+            onSetYTrunkUnits={setYTrunkUnits}
+            yBranchUnits={yBranchUnits}
+            onSetYBranchUnits={setYBranchUnits}
+            onMirrorChannel={handleMirrorChannel}
+            onMirrorPlacement={handleMirrorPlacement}
           />
         )}
 
         {/* Bottom Tool Dock & Zoom Controls (Hidden in Zen Mode) */}
         {!isZenMode && (
           <ToolPalette
+            platform={boardConfig.platform}
             activeTool={activeTool}
             onSelectTool={(tool) => {
               setActiveTool(tool);
               setIsEditingMounts(false);
+              setPlacementCategory(null);
+              setPlacementMirrored(false);
               if (tool !== 'select') {
                 setSelectedChannelId(null);
               }
             }}
             activeCategory={activeCategory}
-            onSelectCategory={(catId) => setActiveCategory(catId as any)}
+            onSelectCategory={(catId) => {
+              setActiveCategory(catId as any);
+              setPlacementCategory(catId as any);
+            }}
             categories={categories}
             onAddCategory={handleAddCategory}
             onDeleteCategory={handleDeleteCategory}
@@ -542,6 +843,9 @@ export default function App() {
             onSelectAccessory={setActiveAccessoryId}
             onAddAccessory={handleAddAccessory}
             onDeleteAccessory={handleDeleteAccessory}
+            onUpdateAccessory={handleUpdateAccessory}
+            channelCount={channels.length}
+            onClearBoard={handleClearBoard}
             zoom={zoom}
             onZoomIn={() => setZoom((z) => Math.min(3.0, z * 1.15))}
             onZoomOut={() => setZoom((z) => Math.max(0.2, z / 1.15))}
@@ -556,6 +860,8 @@ export default function App() {
         isOpen={isBOMOpen}
         onClose={() => setIsBOMOpen(false)}
         bom={bom}
+        categories={categories}
+        projectTitle={projectTitle}
         onShowToast={showToast}
       />
 

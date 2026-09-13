@@ -28,6 +28,11 @@ import {
   findBestMultiboardModule,
   getChannelOutlinePath,
   getCurvedChannelGeometry,
+  STANDARD_MULTIBOARD_DIMENSIONS,
+  snapToValidMultiboardDimension,
+  getSupportedModules,
+  validateMultiboardDimensions,
+  getCompatibleDimensions,
 } from '../src/lib/geometry.ts';
 import type { BoardConfig, PlacedChannel } from '../src/lib/types.ts';
 
@@ -157,18 +162,19 @@ test('getLocalFootprint - corner channel (L-channel) 2x2', () => {
 });
 
 test('getLocalFootprint - junction channel (T-channel) 3x2', () => {
-  // 0°: (0,0), (1,0), (2,0), (1,1)
+  // 0°: trunk (0,0), (1,0), (2,0), branch (1,1), (1,2) -> 5 cells
   const fp0 = getLocalFootprint('junction', 3, 0);
-  assert.equal(fp0.length, 4);
+  assert.equal(fp0.length, 5);
   assert.ok(fp0.some((p) => p.x === 0 && p.y === 0));
   assert.ok(fp0.some((p) => p.x === 1 && p.y === 0));
   assert.ok(fp0.some((p) => p.x === 2 && p.y === 0));
   assert.ok(fp0.some((p) => p.x === 1 && p.y === 1));
+  assert.ok(fp0.some((p) => p.x === 1 && p.y === 2));
 
-  // 90°: 4 cells, width 2, height 3
+  // 90°: 5 cells, width 3, height 3
   const fp90 = getLocalFootprint('junction', 3, 90);
-  assert.equal(fp90.length, 4);
-  assert.ok(fp90.every((p) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 2));
+  assert.equal(fp90.length, 5);
+  assert.ok(fp90.every((p) => p.x >= 0 && p.x <= 2 && p.y >= 0 && p.y <= 2));
 });
 
 test('getChannelFootprint and bounding box calculation', () => {
@@ -576,3 +582,96 @@ test('Curved channels: tangent collar extensions ensure ports reach unit boundar
   assert.ok(geom.centerLinePath.includes('M'));
   assert.ok(geom.centerLinePath.includes('A'));
 });
+
+test('snapToValidMultiboardDimension snaps non-standard dimensions down and preserves valid standard dimensions', () => {
+  // Exact standard dimensions
+  assert.deepEqual(snapToValidMultiboardDimension(900), { snappedMm: 900, wasAdjusted: false });
+  assert.deepEqual(snapToValidMultiboardDimension(800), { snappedMm: 800, wasAdjusted: false });
+  assert.deepEqual(snapToValidMultiboardDimension(300), { snappedMm: 300, wasAdjusted: false });
+  assert.deepEqual(snapToValidMultiboardDimension(100), { snappedMm: 100, wasAdjusted: false });
+
+  // Non-standard user inputs
+  assert.deepEqual(snapToValidMultiboardDimension(875), { snappedMm: 800, wasAdjusted: true });
+  assert.deepEqual(snapToValidMultiboardDimension(975), { snappedMm: 900, wasAdjusted: true });
+  assert.deepEqual(snapToValidMultiboardDimension(625), { snappedMm: 600, wasAdjusted: true });
+  assert.deepEqual(snapToValidMultiboardDimension(50), { snappedMm: 100, wasAdjusted: true });
+
+  // Verify STANDARD_MULTIBOARD_DIMENSIONS contains all key multiples
+  assert.ok(STANDARD_MULTIBOARD_DIMENSIONS.includes(800));
+  assert.ok(STANDARD_MULTIBOARD_DIMENSIONS.includes(900));
+  assert.ok(STANDARD_MULTIBOARD_DIMENSIONS.includes(1200));
+  assert.ok(!STANDARD_MULTIBOARD_DIMENSIONS.includes(875));
+  assert.ok(!STANDARD_MULTIBOARD_DIMENSIONS.includes(975));
+});
+
+test('getSupportedModules returns correct Multiboard tile modules', () => {
+  assert.deepEqual(getSupportedModules(750), [6]);
+  assert.deepEqual(getSupportedModules(100), [4]);
+  assert.deepEqual(getSupportedModules(900), [6, 4]);
+  assert.deepEqual(getSupportedModules(800), [8, 4]);
+  assert.deepEqual(getSupportedModules(600), [8, 6, 4]);
+  assert.deepEqual(getSupportedModules(875), []);
+});
+
+test('validateMultiboardDimensions detects incompatible 750x100 mm and generates explanatory warning', () => {
+  const result = validateMultiboardDimensions(750, 100);
+  assert.equal(result.isValid, false);
+  assert.equal(result.isExactMatch, false);
+  assert.equal(result.effectiveWidthMm, 750);
+  assert.equal(result.effectiveHeightMm, 150);
+  assert.equal(result.warningTitle, 'Misura 750×100 mm non realizzabile');
+  assert.ok(result.warningMessage?.includes('Tile quadrate'));
+  assert.ok(result.warningMessage?.includes('750 mm richiede tile da 150 mm (6×6 MU)'));
+  assert.ok(result.warningMessage?.includes('750×150 mm'));
+});
+
+test('validateMultiboardDimensions accepts standard compatible pairs', () => {
+  const result900x300 = validateMultiboardDimensions(900, 300);
+  assert.equal(result900x300.isValid, true);
+  assert.equal(result900x300.isExactMatch, true);
+  assert.equal(result900x300.warningTitle, null);
+  assert.equal(result900x300.warningMessage, null);
+  assert.equal(result900x300.effectiveWidthMm, 900);
+  assert.equal(result900x300.effectiveHeightMm, 300);
+
+  const result800x600 = validateMultiboardDimensions(800, 600);
+  assert.equal(result800x600.isValid, true);
+  assert.equal(result800x600.isExactMatch, true);
+  assert.equal(result800x600.effectiveWidthMm, 800);
+  assert.equal(result800x600.effectiveHeightMm, 600);
+});
+
+test('validateMultiboardDimensions adjusts non-standard dimensions', () => {
+  const result875 = validateMultiboardDimensions(875, 400);
+  assert.equal(result875.isExactMatch, false);
+  assert.equal(result875.effectiveWidthMm, 800);
+  assert.equal(result875.effectiveHeightMm, 400);
+  assert.ok(result875.warningTitle?.includes('non standard'));
+});
+
+test('getCompatibleDimensions returns valid sequence without incompatible steps (e.g. 800x200 down to 800x100)', () => {
+  const comp800 = getCompatibleDimensions(800);
+  // 150 must NOT be in compatible list for 800 mm
+  assert.equal(comp800.includes(150), false);
+  assert.equal(comp800.includes(100), true);
+  assert.equal(comp800.includes(200), true);
+  assert.equal(comp800.includes(300), true);
+
+  // Stepping down from 200 mm when width is 800 mm
+  const prevH = comp800.slice().reverse().find((d) => d < 200);
+  assert.equal(prevH, 100);
+
+  // Stepping up from 200 mm when width is 800 mm
+  const nextH = comp800.find((d) => d > 200);
+  assert.equal(nextH, 300);
+
+  // Stepping when width is 750 mm
+  const comp750 = getCompatibleDimensions(750);
+  assert.equal(comp750.includes(100), false);
+  assert.equal(comp750.includes(200), false);
+  assert.equal(comp750.includes(150), true);
+  assert.equal(comp750.includes(300), true);
+  assert.equal(comp750.includes(450), true);
+});
+
+

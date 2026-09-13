@@ -1,130 +1,172 @@
 /**
  * Underplan Demo Setup
- * Realistic cable management layout showcasing Power, Data, Video, and Network runs.
+ * Matches the approved Figma reference layout exactly.
  */
 
 import type { PlacedChannel } from '../lib/types.ts';
 
 export const DEMO_CHANNELS: PlacedChannel[] = [
-  // 1. Mains AC Power Run (Amber) - Rear desk edge to power distribution strip
+  // 1. Blue HDMI Selected Channel (Bottom Left)
   {
-    id: 'chan-demo-pwr-1',
+    id: 'chan-figma-hdmi-straight',
     kind: 'straight',
-    length: 4,
-    position: { x: 4, y: 2 },
+    length: 3,
+    position: { x: 3, y: 8 },
     rotation: 0,
-    category: 'power',
-    label: 'AC Mains In',
+    category: 'hdmi',
+    label: 'Main Cable Run',
   },
+
+  // 2. Blue Curved Elbow (Top Left)
   {
-    id: 'chan-demo-pwr-2',
-    kind: 'straight',
-    length: 4,
-    position: { x: 8, y: 2 },
-    rotation: 0,
-    category: 'power',
-    label: 'Power Strip Trunk',
+    id: 'chan-figma-hdmi-curved-1',
+    kind: 'curved',
+    radiusUnits: 2,
+    position: { x: 7, y: 2 },
+    rotation: 90,
+    category: 'hdmi',
+    label: 'Display Drop',
   },
+
+  // 3. Blue Curved Elbow 2 (Mid-Left)
   {
-    id: 'chan-demo-pwr-3',
-    kind: 'corner',
+    id: 'chan-figma-hdmi-curved-2',
+    kind: 'curved',
+    radiusUnits: 2,
     position: { x: 12, y: 2 },
     rotation: 0,
-    category: 'power',
-    label: 'Power Drop Elbow',
-  },
-  {
-    id: 'chan-demo-pwr-4',
-    kind: 'straight',
-    length: 3,
-    position: { x: 13, y: 4 },
-    rotation: 90,
-    category: 'power',
-    label: 'Brick Drop',
+    category: 'hdmi',
+    label: 'Riser Turn',
   },
 
-  // 2. High-Speed USB & Peripherals Run (Cyan) - Central desk to docking hub
+  // 4. Blue Cable Loop Max (Mid-Left Accessory)
   {
-    id: 'chan-demo-data-1',
-    kind: 'straight',
-    length: 4,
-    position: { x: 8, y: 8 },
+    id: 'chan-figma-hdmi-loop-1',
+    kind: 'accessory',
+    widthUnits: 6,
+    length: 3,
+    label: 'Cable Loop Max',
+    position: { x: 8, y: 5 },
     rotation: 0,
-    category: 'data',
-    label: 'USB-C Dock Bus',
+    category: 'hdmi',
   },
+
+  // 5. Orange Power Y-Split (Upper Center)
   {
-    id: 'chan-demo-data-2',
+    id: 'chan-figma-pwr-y',
+    kind: 'y_split',
+    position: { x: 14, y: 2 },
+    rotation: 0,
+    category: 'power',
+    label: 'Power Feed Split',
+  },
+
+  // 6. Orange Junction / Hub (Center)
+  {
+    id: 'chan-figma-pwr-cross',
     kind: 'junction',
-    position: { x: 12, y: 8 },
+    position: { x: 14, y: 6 },
     rotation: 0,
-    category: 'data',
-    label: 'Desk Hub Tee',
-  },
-  {
-    id: 'chan-demo-data-3',
-    kind: 'straight',
-    length: 3,
-    position: { x: 15, y: 8 },
-    rotation: 0,
-    category: 'data',
-    label: 'Keyboard/Mouse Run',
-  },
-  {
-    id: 'chan-demo-data-4',
-    kind: 'straight',
-    length: 3,
-    position: { x: 13, y: 10 },
-    rotation: 90,
-    category: 'data',
-    label: 'Front USB Drop',
+    category: 'power',
+    label: 'Main Trunk Tee',
+    branchSpanUnits: 1,
   },
 
-  // 3. Dual Monitor Video / DisplayPort Run (Purple) - Right side arm mount
+  // 7. Orange Lower Curved Elbow
   {
-    id: 'chan-demo-video-1',
-    kind: 'straight',
-    length: 4,
-    position: { x: 22, y: 4 },
-    rotation: 0,
-    category: 'video',
-    label: 'DP 2.1 Monitor A',
+    id: 'chan-figma-pwr-curved-lower',
+    kind: 'curved',
+    radiusUnits: 2,
+    position: { x: 14, y: 8 },
+    rotation: 270,
+    category: 'power',
+    label: 'Lower Turn',
   },
+
+  // 8. Orange Cable Loop Max (Upper Center-Right)
   {
-    id: 'chan-demo-video-2',
+    id: 'chan-figma-pwr-loop-top',
+    kind: 'accessory',
+    widthUnits: 6,
+    length: 3,
+    label: 'Cable Loop Max',
+    position: { x: 17, y: 4 },
+    rotation: 0,
+    category: 'power',
+  },
+
+  // 9. Orange Cable Loop Max (Lower Center-Right)
+  {
+    id: 'chan-figma-pwr-loop-bottom',
+    kind: 'accessory',
+    widthUnits: 6,
+    length: 3,
+    label: 'Cable Loop Max',
+    position: { x: 17, y: 8 },
+    rotation: 0,
+    category: 'power',
+  },
+
+  // 10. Orange Cable Spool (Bottom Center-Right)
+  {
+    id: 'chan-figma-pwr-spool',
+    kind: 'spool',
+    label: 'Cable Spool',
+    position: { x: 23, y: 8 },
+    rotation: 0,
+    category: 'power',
+  },
+
+  // 11. Orange Multi-socket Holder (Far Right)
+  {
+    id: 'chan-figma-pwr-socket',
+    kind: 'socket_holder',
+    label: 'Multi-socket',
+    position: { x: 31, y: 5 },
+    rotation: 0,
+    category: 'power',
+  },
+
+  // 12. Orange Upper Straight Bus (Length >= 4)
+  {
+    id: 'chan-figma-pwr-bus-top',
+    kind: 'straight',
+    length: 7,
+    position: { x: 23, y: 2 },
+    rotation: 0,
+    category: 'power',
+    label: 'Rear Rail',
+  },
+
+  // 13. Orange Upper Corner
+  {
+    id: 'chan-figma-pwr-corner-top',
     kind: 'corner',
-    position: { x: 26, y: 4 },
+    position: { x: 31, y: 2 },
     rotation: 0,
-    category: 'video',
-    label: 'Monitor Arm Turn',
-  },
-  {
-    id: 'chan-demo-video-3',
-    kind: 'straight',
-    length: 4,
-    position: { x: 27, y: 6 },
-    rotation: 90,
-    category: 'video',
-    label: 'Arm Riser Channel',
+    category: 'power',
+    label: 'Desk Corner',
   },
 
-  // 4. Cat6A Gigabit Ethernet Network Line (Green) - Bottom edge
+  // 14. Orange Middle Branch Straight
   {
-    id: 'chan-demo-net-1',
+    id: 'chan-figma-pwr-branch-mid',
     kind: 'straight',
-    length: 4,
-    position: { x: 20, y: 12 },
+    length: 5,
+    position: { x: 24, y: 5 },
     rotation: 0,
-    category: 'network',
-    label: 'Cat6A Switch Trunk',
+    category: 'power',
+    label: 'Device Run',
   },
+
+  // 15. Orange Lower Run Straight
   {
-    id: 'chan-demo-net-2',
+    id: 'chan-figma-pwr-branch-low',
     kind: 'straight',
     length: 3,
-    position: { x: 24, y: 12 },
+    position: { x: 27, y: 8 },
     rotation: 0,
-    category: 'network',
-    label: 'Wall Plate Feed',
+    category: 'power',
+    label: 'Floor Drop',
   },
 ];

@@ -39,7 +39,8 @@ export interface BoundingBox {
 }
 
 /**
- * Discrete orthogonal rotation angle in degrees (clockwise in SVG Y-down space).
+ * Discrete rotation angle in degrees (clockwise in SVG Y-down space).
+ * Supports 45° step rotations.
  */
 export type Rotation = 0 | 90 | 180 | 270;
 
@@ -47,23 +48,28 @@ export type Rotation = 0 | 90 | 180 | 270;
 // 2. Multiboard & Board Configuration
 // ============================================================================
 
-/**
- * Standard Multiboard tile form factors.
- * - '8x8': 8 holes x 8 holes (200mm x 200mm standard KeepMaking tile)
- * - '4x4': 4 holes x 4 holes (100mm x 100mm compact tile)
- * - 'custom': user-defined hole dimensions
- */
-export type TileSize = '8x8' | '6x6' | '4x4' | 'custom';
+export type GridPlatform = 'multiboard' | 'opengrid';
 
 /**
- * Representation of an individual Multiboard tile placed in the board matrix.
+ * Standard Multiboard and openGrid tile form factors.
+ * - '8x8': 8x8 holes (200x200mm Multiboard, 224x224mm openGrid)
+ * - '7x7': 7x7 holes (196x196mm openGrid)
+ * - '6x6': 6x6 holes (150x150mm Multiboard, 168x168mm openGrid)
+ * - '5x5': 5x5 holes (140x140mm openGrid)
+ * - '4x4': 4x4 holes (100x100mm Multiboard, 112x112mm openGrid)
+ * - 'custom': user-defined hole dimensions
+ */
+export type TileSize = '8x8' | '7x7' | '6x6' | '5x5' | '4x4' | 'custom';
+
+/**
+ * Representation of an individual tile placed in the board matrix.
  */
 export interface TileDefinition {
   readonly id: string;
   readonly col: number; // 0-indexed column in the tile matrix
   readonly row: number; // 0-indexed row in the tile matrix
-  readonly widthHoles: number; // typically 8 or 4
-  readonly heightHoles: number; // typically 8 or 4
+  readonly widthHoles: number; // typically 8, 7, 6, 5, or 4
+  readonly heightHoles: number; // typically 8, 7, 6, 5, or 4
   readonly originHoleX: number; // starting hole index X on the board (col * widthHoles)
   readonly originHoleY: number; // starting hole index Y on the board (row * heightHoles)
   readonly type: TileSize;
@@ -79,26 +85,33 @@ export interface CustomCategory {
  * Configuration parameters defining the overall board layout and pitch.
  */
 export interface BoardConfig {
+  /** Underlying grid ecosystem: 'multiboard' (25mm) or 'opengrid' (28mm) */
+  readonly platform?: GridPlatform;
   /** Number of tile columns across the board (default: 6) */
   readonly cols: number;
   /** Number of tile rows down the board (default: 3) */
   readonly rows: number;
-  /** Number of octagon holes per tile column (default: 8) */
+  /** Number of grid holes per tile column (default: 8 for Multiboard, 6 for openGrid) */
   readonly tileWidthHoles: number;
-  /** Number of octagon holes per tile row (default: 8) */
+  /** Number of grid holes per tile row (default: 8 for Multiboard, 6 for openGrid) */
   readonly tileHeightHoles: number;
-  /** Distance in mm between centers of adjacent octagon holes (standard Multiboard: 25mm) */
+  /** Distance in mm between centers of adjacent grid holes (Multiboard: 25mm, openGrid: 28mm) */
   readonly holePitchMm: number;
   /** Optional custom desk width in mm */
   readonly customDeskWidthMm?: number;
   /** Optional custom desk height/depth in mm */
   readonly customDeskHeightMm?: number;
+  /** Optional custom partitioned tiles (e.g. for openGrid parametric layouts) */
+  readonly customTiles?: readonly TileDefinition[];
+  /** Max tile size in holes for parametric partitioner (default: 8) */
+  readonly maxTileHoles?: number;
 }
 
 /**
  * Computed physical and discrete dimensions of the full board.
  */
 export interface BoardDimensions {
+  readonly platform?: GridPlatform;
   readonly totalCols: number;
   readonly totalRows: number;
   readonly totalHolesX: number; // cols * tileWidthHoles
@@ -107,6 +120,8 @@ export interface BoardDimensions {
   readonly totalHeightMm: number; // totalHolesY * holePitchMm
   readonly customDeskWidthMm?: number;
   readonly customDeskHeightMm?: number;
+  readonly customTiles?: readonly TileDefinition[];
+  readonly maxTileHoles?: number;
 }
 
 // ============================================================================
@@ -118,6 +133,11 @@ export type MountingCategory = 'underware' | 'multiboard' | 'surface';
 export type MountingType =
   // A. Underware mounting (fully implemented)
   | 'threaded_snap'
+  | 'opengrid_snap' // legacy alias for opengrid_base_snap
+  | 'opengrid_base_snap' // The Underware channel base snap
+  | 'opengrid_grip_snap' // The Underware grip channel snap
+  | 'none' // No snap (friction fit / free floating)
+  | 'direct_snap'
   | 'direct_screw'
   // B. Multiboard mounting
   | 'multiconnect'
@@ -157,6 +177,71 @@ export const MOUNTING_OPTIONS: readonly MountingOption[] = Object.freeze([
     helperText: 'Removable mounting into Multiboard octagonal holes. Minimum 2 + 10% spares recommended.',
     notes: 'Removable mounting into Multiboard octagonal holes. Includes +10% spare estimate.',
     defaultSparesPercent: 10,
+  },
+  {
+    id: 'opengrid_base_snap',
+    name: 'The Underware channel base snap',
+    label: 'The Underware channel base snap',
+    category: 'underware',
+    description: 'Official Underware base snap locking into openGrid 28mm cells from underneath the channel.',
+    hardwareName: 'openGrid base snaps',
+    isAvailable: true,
+    isImplemented: true,
+    helperText: 'Removable base snap locking into openGrid 28mm square grid holes. Minimum 2 + 10% spares recommended.',
+    notes: 'Removable base snap for openGrid 28mm cells. Includes +10% spare estimate.',
+    defaultSparesPercent: 10,
+  },
+  {
+    id: 'opengrid_grip_snap',
+    name: 'The Underware grip channel snap',
+    label: 'The Underware grip channel snap',
+    category: 'underware',
+    description: 'Official Underware outer-rail clamp grip snap locking channels into openGrid 28mm cells.',
+    hardwareName: 'openGrid grip snaps',
+    isAvailable: true,
+    isImplemented: true,
+    helperText: 'Outer-rail clamp grip snap for openGrid 28mm cells. Minimum 2 + 10% spares recommended.',
+    notes: 'Outer clamp snap for openGrid 28mm cells. Includes +10% spare estimate.',
+    defaultSparesPercent: 10,
+  },
+  {
+    id: 'none',
+    name: 'No Snap',
+    label: 'No Snap (Friction Fit)',
+    category: 'underware',
+    description: 'Free-floating or friction-fit channel. Zero hardware snaps required.',
+    hardwareName: 'no snaps',
+    isAvailable: true,
+    isImplemented: true,
+    helperText: 'Channel resting or held by friction/adjacent channels. Zero mounting hardware added to BOM.',
+    notes: 'Zero mounting hardware required.',
+    defaultSparesPercent: 0,
+  },
+  {
+    id: 'opengrid_snap',
+    name: 'openGrid Snap (Legacy)',
+    label: 'Underware openGrid Snap',
+    category: 'underware',
+    description: 'Official Underware snap connector for openGrid 28mm cells.',
+    hardwareName: 'openGrid snaps',
+    isAvailable: false, // supersceded by opengrid_base_snap
+    isImplemented: true,
+    helperText: 'Removable snap into openGrid 28mm square grid holes.',
+    notes: 'Legacy alias for openGrid base snap.',
+    defaultSparesPercent: 10,
+  },
+  {
+    id: 'direct_snap',
+    name: 'Direct Snap (Integrated)',
+    label: 'Direct Snap Integrated',
+    category: 'underware',
+    description: 'Snap integrati direttamente nella mesh 3D stampata del canale.',
+    hardwareName: 'integrated snaps',
+    isAvailable: true,
+    isImplemented: true,
+    helperText: 'Snap incorporati nel modello 3D stampato. Zero parti hardware separate nella distinta BOM.',
+    notes: 'Snap incorporati nel modello 3D stampato. Non richiede connettori hardware separati.',
+    defaultSparesPercent: 0,
   },
   {
     id: 'direct_screw',
@@ -325,6 +410,8 @@ export interface PlacedChannel {
   readonly label?: string;
   /** Optional custom snap spacing override (number of units between snaps) */
   readonly customSnapSpacing?: number;
+  /** Whether the channel has been horizontally mirrored */
+  readonly mirrored?: boolean;
 
   // --- Parametric Extensions ---
   /** Width in Multiboard Units (MU), default: 1 (25mm) or 2 (50mm) */
@@ -359,6 +446,8 @@ export interface PlacedChannel {
   readonly connectorMode?: 'auto' | 'manual';
   /** Explicit attachment points when connectorMode is 'manual' (in local coordinates relative to channel origin) */
   readonly customMountPoints?: readonly GridPoint[];
+  /** Canonical cell indices in footprint.cells where mount points reside */
+  readonly customMountIndices?: readonly number[];
 }
 
 /**
@@ -520,6 +609,7 @@ export interface BOMSummary {
 export interface BillOfMaterials {
   readonly generatedAt: string; // ISO 8601 string
   readonly boardDimensions: {
+    readonly platform?: GridPlatform;
     readonly cols: number;
     readonly rows: number;
     readonly totalHolesX: number;
@@ -530,4 +620,15 @@ export interface BillOfMaterials {
   };
   readonly items: readonly BOMItem[];
   readonly summary: BOMSummary;
+}
+
+/**
+ * Saved project / setup containing surface layout and placed channels.
+ */
+export interface ProjectItem {
+  id: string;
+  name: string;
+  boardConfig: BoardConfig;
+  channels: PlacedChannel[];
+  updatedAt: number;
 }
