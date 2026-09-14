@@ -20,6 +20,7 @@ import { Canvas } from './components/Canvas';
 import { InspectorPanel } from './components/InspectorPanel';
 import { BOMDrawer } from './components/BOMDrawer';
 import { Toast } from './components/Toast';
+import { MobileFallback } from './components/MobileFallback';
 
 import { DEMO_CHANNELS } from './data/demoLayout';
 
@@ -722,8 +723,15 @@ export default function App() {
 
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#0E0F12] text-slate-100 overflow-hidden font-sans select-none relative">
-      {/* Top Navigation Bar (Hidden in Zen Mode) */}
+    <div className="relative w-screen h-screen h-[100dvh] overflow-hidden bg-[#0E0F12] font-sans">
+      {/* Smartphone Breakpoint Fallback View (< 768px) */}
+      <div className="underplan-mobile-screen w-full h-full overflow-hidden">
+        <MobileFallback />
+      </div>
+
+      {/* Main Full-Screen CAD Desktop Workspace (>= 768px) */}
+      <div className="underplan-desktop-workspace flex h-full w-full flex-col bg-[#0E0F12] text-slate-100 overflow-hidden select-none relative">
+        {/* Top Navigation Bar (Hidden in Zen Mode) */}
       {!isZenMode && (
         <Header
           boardConfig={boardConfig}
@@ -914,6 +922,7 @@ export default function App() {
         projectTitle={projectTitle}
         onShowToast={showToast}
       />
+      </div>
 
       {/* Toast Notifications */}
       {toast && (

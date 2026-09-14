@@ -119,3 +119,23 @@ input:focus-visible {
   }
 }
 
+/* ============================================================ */
+/* Responsive Mobile & Tablet Fallback (< 1024px)               */
+/* ============================================================ */
+.underplan-mobile-screen {
+  display: flex !important;
+}
+
+.underplan-desktop-workspace {
+  display: none !important;
+}
+
+@media (min-width: 1024px) and (min-height: 501px) {
+  .underplan-mobile-screen {
+    display: none !important;
+  }
+  .underplan-desktop-workspace {
+    display: flex !important;
+  }
+}
+
