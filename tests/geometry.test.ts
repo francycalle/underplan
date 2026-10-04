@@ -619,9 +619,9 @@ test('validateMultiboardDimensions detects incompatible 750x100 mm and generates
   assert.equal(result.isExactMatch, false);
   assert.equal(result.effectiveWidthMm, 750);
   assert.equal(result.effectiveHeightMm, 150);
-  assert.equal(result.warningTitle, 'Misura 750×100 mm non realizzabile');
-  assert.ok(result.warningMessage?.includes('Tile quadrate'));
-  assert.ok(result.warningMessage?.includes('750 mm richiede tile da 150 mm (6×6 MU)'));
+  assert.equal(result.warningTitle, 'Size 750×100 mm not possible');
+  assert.ok(result.warningMessage?.includes('Square tiles'));
+  assert.ok(result.warningMessage?.includes('750 mm requires tiles of 150 mm (6×6 MU)'));
   assert.ok(result.warningMessage?.includes('750×150 mm'));
 });
 
@@ -646,7 +646,7 @@ test('validateMultiboardDimensions adjusts non-standard dimensions', () => {
   assert.equal(result875.isExactMatch, false);
   assert.equal(result875.effectiveWidthMm, 800);
   assert.equal(result875.effectiveHeightMm, 400);
-  assert.ok(result875.warningTitle?.includes('non standard'));
+  assert.ok(result875.warningTitle?.includes('Non-standard'));
 });
 
 test('getCompatibleDimensions returns valid sequence without incompatible steps (e.g. 800x200 down to 800x100)', () => {

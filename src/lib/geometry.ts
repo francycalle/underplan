@@ -432,11 +432,11 @@ export function validateMultiboardDimensions(
   if (wMods.length > 0 && hMods.length > 0 && commonMods.length === 0) {
     let explanation = '';
     if (tiling.actualWidthMm === w && tiling.actualHeightMm !== h) {
-      explanation = `${w} mm richiede tile da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con altezza min ${tiling.actualHeightMm} mm.`;
+      explanation = `${w} mm requires tiles of ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), with min height ${tiling.actualHeightMm} mm.`;
     } else if (tiling.actualWidthMm !== w && tiling.actualHeightMm === h) {
-      explanation = `${h} mm richiede tile da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con larghezza multipla di ${tiling.moduleSize * holePitchMm} mm.`;
+      explanation = `${h} mm requires tiles of ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), with width multiple of ${tiling.moduleSize * holePitchMm} mm.`;
     } else {
-      explanation = `${w} mm e ${h} mm richiedono moduli differenti e non possono combinarsi con tile quadrate.`;
+      explanation = `${w} mm and ${h} mm require different modules and cannot be combined with square tiles.`;
     }
 
     return {
@@ -448,8 +448,8 @@ export function validateMultiboardDimensions(
       rows: tiling.rows,
       totalTiles: tiling.totalTiles,
       moduleSize: tiling.moduleSize,
-      warningTitle: `Misura ${w}×${h} mm non realizzabile`,
-      warningMessage: `Tile quadrate: ${explanation} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+      warningTitle: `Size ${w}×${h} mm not possible`,
+      warningMessage: `Square tiles: ${explanation} Adjusted to ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles of ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
     };
   }
 
@@ -458,11 +458,11 @@ export function validateMultiboardDimensions(
   const isHNonStd = hMods.length === 0;
   let nonStdDesc = '';
   if (isWNonStd && isHNonStd) {
-    nonStdDesc = `${w} mm e ${h} mm non sono misure standard Multiboard.`;
+    nonStdDesc = `${w} mm and ${h} mm are not standard Multiboard measurements.`;
   } else if (isWNonStd) {
-    nonStdDesc = `La larghezza da ${w} mm non è standard Multiboard.`;
+    nonStdDesc = `The width of ${w} mm is not a standard Multiboard measurement.`;
   } else {
-    nonStdDesc = `L'altezza da ${h} mm non è standard Multiboard.`;
+    nonStdDesc = `The height of ${h} mm is not a standard Multiboard measurement.`;
   }
 
   return {
@@ -474,8 +474,8 @@ export function validateMultiboardDimensions(
     rows: tiling.rows,
     totalTiles: tiling.totalTiles,
     moduleSize: tiling.moduleSize,
-    warningTitle: `Misura non standard`,
-    warningMessage: `${nonStdDesc} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+    warningTitle: `Non-standard size`,
+    warningMessage: `${nonStdDesc} Adjusted to ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles of ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
   };
 }
 
@@ -680,11 +680,11 @@ export function validateOpenGridDimensions(
   if (wMods.length > 0 && hMods.length > 0 && commonMods.length === 0) {
     let explanation = '';
     if (tiling.actualWidthMm === w && tiling.actualHeightMm !== h) {
-      explanation = `${w} mm richiede tile openGrid da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con altezza min ${tiling.actualHeightMm} mm.`;
+      explanation = `${w} mm requires openGrid tiles of ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), with min height ${tiling.actualHeightMm} mm.`;
     } else if (tiling.actualWidthMm !== w && tiling.actualHeightMm === h) {
-      explanation = `${h} mm richiede tile openGrid da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con larghezza multipla di ${tiling.moduleSize * holePitchMm} mm.`;
+      explanation = `${h} mm requires openGrid tiles of ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), with width multiple of ${tiling.moduleSize * holePitchMm} mm.`;
     } else {
-      explanation = `${w} mm e ${h} mm richiedono moduli differenti e non possono combinarsi con tile quadrate.`;
+      explanation = `${w} mm and ${h} mm require different modules and cannot be combined with square tiles.`;
     }
 
     return {
@@ -696,8 +696,8 @@ export function validateOpenGridDimensions(
       rows: tiling.rows,
       totalTiles: tiling.totalTiles,
       moduleSize: tiling.moduleSize,
-      warningTitle: `Misura ${w}×${h} mm non realizzabile`,
-      warningMessage: `Tile quadrate openGrid: ${explanation} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+      warningTitle: `Size ${w}×${h} mm not possible`,
+      warningMessage: `openGrid square tiles: ${explanation} Adjusted to ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles of ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
     };
   }
 
@@ -705,11 +705,11 @@ export function validateOpenGridDimensions(
   const isHNonStd = hMods.length === 0;
   let nonStdDesc = '';
   if (isWNonStd && isHNonStd) {
-    nonStdDesc = `${w} mm e ${h} mm non sono misure standard openGrid.`;
+    nonStdDesc = `${w} mm and ${h} mm are not standard openGrid measurements.`;
   } else if (isWNonStd) {
-    nonStdDesc = `La larghezza da ${w} mm non è standard openGrid.`;
+    nonStdDesc = `The width of ${w} mm is not a standard openGrid measurement.`;
   } else {
-    nonStdDesc = `L'altezza da ${h} mm non è standard openGrid.`;
+    nonStdDesc = `The height of ${h} mm is not a standard openGrid measurement.`;
   }
 
   return {
@@ -721,8 +721,8 @@ export function validateOpenGridDimensions(
     rows: tiling.rows,
     totalTiles: tiling.totalTiles,
     moduleSize: tiling.moduleSize,
-    warningTitle: `Misura non standard`,
-    warningMessage: `${nonStdDesc} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+    warningTitle: `Non-standard size`,
+    warningMessage: `${nonStdDesc} Adjusted to ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles of ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
   };
 }
 

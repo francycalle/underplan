@@ -357,8 +357,8 @@ export const Header: React.FC<HeaderProps> = ({
       let warning: { title: string; message: string } | null = null;
       if (effectiveW !== val) {
         warning = {
-          title: `Misura ${val} mm non multiplo di 28 mm`,
-          message: `Adattata a ${effectiveW} mm (${holes} OU) per la griglia openGrid.`,
+          title: `Size ${val} mm not a multiple of 28 mm`,
+          message: `Adjusted to ${effectiveW} mm (${holes} OU) for the openGrid grid.`,
         };
       }
       setInputWidthMm(String(effectiveW));
@@ -374,8 +374,8 @@ export const Header: React.FC<HeaderProps> = ({
     let warning: { title: string; message: string } | null = null;
     if (!isValStandard) {
       warning = {
-        title: `Misura ${val} mm non standard`,
-        message: `Adattata a ${validation.effectiveWidthMm} mm (multiplo di tile standard Multiboard).`,
+        title: `Size ${val} mm non-standard`,
+        message: `Adjusted to ${validation.effectiveWidthMm} mm (multiple of standard Multiboard tiles).`,
       };
     } else if (validation.effectiveWidthMm !== val) {
       if (validation.warningTitle && validation.warningMessage) {
@@ -404,8 +404,8 @@ export const Header: React.FC<HeaderProps> = ({
       let warning: { title: string; message: string } | null = null;
       if (effectiveH !== val) {
         warning = {
-          title: `Misura ${val} mm non multiplo di 28 mm`,
-          message: `Adattata a ${effectiveH} mm (${holes} OU) per la griglia openGrid.`,
+          title: `Size ${val} mm not a multiple of 28 mm`,
+          message: `Adjusted to ${effectiveH} mm (${holes} OU) for the openGrid grid.`,
         };
       }
       setInputHeightMm(String(effectiveH));
@@ -421,8 +421,8 @@ export const Header: React.FC<HeaderProps> = ({
     let warning: { title: string; message: string } | null = null;
     if (!isValStandard) {
       warning = {
-        title: `Misura ${val} mm non standard`,
-        message: `Adattata a ${validation.effectiveHeightMm} mm (multiplo di tile standard Multiboard).`,
+        title: `Size ${val} mm non-standard`,
+        message: `Adjusted to ${validation.effectiveHeightMm} mm (multiple of standard Multiboard tiles).`,
       };
     } else if (validation.effectiveHeightMm !== val) {
       if (validation.warningTitle && validation.warningMessage) {
@@ -495,8 +495,8 @@ export const Header: React.FC<HeaderProps> = ({
       let warning: { title: string; message: string } | null = null;
       if (effectiveW !== val) {
         warning = {
-          title: `Misura ${val} mm non multiplo di 28 mm`,
-          message: `Adattata a ${effectiveW} mm (${holes} OU) per la griglia openGrid.`,
+          title: `Size ${val} mm not a multiple of 28 mm`,
+          message: `Adjusted to ${effectiveW} mm (${holes} OU) for the openGrid grid.`,
         };
       }
       setNewProjWidthMm(String(effectiveW));
@@ -512,8 +512,8 @@ export const Header: React.FC<HeaderProps> = ({
     let warning: { title: string; message: string } | null = null;
     if (!isValStandard) {
       warning = {
-        title: `Misura ${val} mm non standard`,
-        message: `Adattata a ${validation.effectiveWidthMm} mm (multiplo di tile standard Multiboard).`,
+        title: `Size ${val} mm non-standard`,
+        message: `Adjusted to ${validation.effectiveWidthMm} mm (multiple of standard Multiboard tiles).`,
       };
     } else if (validation.effectiveWidthMm !== val) {
       if (validation.warningTitle && validation.warningMessage) {
@@ -542,8 +542,8 @@ export const Header: React.FC<HeaderProps> = ({
       let warning: { title: string; message: string } | null = null;
       if (effectiveH !== val) {
         warning = {
-          title: `Misura ${val} mm non multiplo di 28 mm`,
-          message: `Adattata a ${effectiveH} mm (${holes} OU) per la griglia openGrid.`,
+          title: `Size ${val} mm not a multiple of 28 mm`,
+          message: `Adjusted to ${effectiveH} mm (${holes} OU) for the openGrid grid.`,
         };
       }
       setNewProjHeightMm(String(effectiveH));
@@ -559,8 +559,8 @@ export const Header: React.FC<HeaderProps> = ({
     let warning: { title: string; message: string } | null = null;
     if (!isValStandard) {
       warning = {
-        title: `Misura ${val} mm non standard`,
-        message: `Adattata a ${validation.effectiveHeightMm} mm (multiplo di tile standard Multiboard).`,
+        title: `Size ${val} mm non-standard`,
+        message: `Adjusted to ${validation.effectiveHeightMm} mm (multiple of standard Multiboard tiles).`,
       };
     } else if (validation.effectiveHeightMm !== val) {
       if (validation.warningTitle && validation.warningMessage) {
