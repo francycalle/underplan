@@ -12,7 +12,7 @@ import {
   formatBOMAsCSV,
   formatBOMAsJSON,
 } from '../src/lib/bom.ts';
-import { DEFAULT_BOARD_CONFIG } from '../src/lib/geometry.ts';
+import { DEFAULT_BOARD_CONFIG, optimizeMultiboardTiles } from '../src/lib/geometry.ts';
 import type { BoardConfig, BoardState, PlacedChannel } from '../src/lib/types.ts';
 
 test('getChannelPartNumber and display name formatting', () => {
@@ -47,6 +47,39 @@ test('aggregateTiles - custom 4x4 tiles', () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].partNumber, 'MB-TILE-4X4');
   assert.equal(items[0].quantity, 9);
+});
+
+test('aggregateTiles - parametric Multiboard partitioned tiles (square + rectangular perimeter tiles)', () => {
+  const tiles = optimizeMultiboardTiles(17, 8, 5);
+  const config: BoardConfig = {
+    platform: 'multiboard',
+    cols: 4,
+    rows: 2,
+    tileWidthHoles: 5,
+    tileHeightHoles: 5,
+    holePitchMm: 25,
+    customTiles: tiles,
+  };
+  const items = aggregateTiles(config, tiles);
+
+  const item5x5 = items.find((i) => i.partNumber === 'MB-TILE-5X5');
+  assert.ok(item5x5);
+  assert.equal(item5x5.quantity, 3);
+
+  const item5x3 = items.find((i) => i.partNumber === 'MB-TILE-5X3');
+  assert.ok(item5x3);
+  assert.equal(item5x3.quantity, 3);
+
+  const item2x5 = items.find((i) => i.partNumber === 'MB-TILE-2X5');
+  assert.ok(item2x5);
+  assert.equal(item2x5.quantity, 1);
+
+  const item2x3 = items.find((i) => i.partNumber === 'MB-TILE-2X3');
+  assert.ok(item2x3);
+  assert.equal(item2x3.quantity, 1);
+
+  const totalQty = items.reduce((sum, i) => sum + i.quantity, 0);
+  assert.equal(totalQty, 8);
 });
 
 test('aggregateChannels - groups identical channels and tallies quantities', () => {

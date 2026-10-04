@@ -401,21 +401,25 @@ export function validateMultiboardDimensions(
   requestedHeightMm: number,
   holePitchMm: number = 25
 ): MultiboardValidation {
-  const w = Math.max(100, Math.round(requestedWidthMm));
-  const h = Math.max(100, Math.round(requestedHeightMm));
+  const pitch = Math.max(0.1, holePitchMm);
+  const w = Math.max(pitch, Math.round(requestedWidthMm));
+  const h = Math.max(pitch, Math.round(requestedHeightMm));
 
-  const wMods = getSupportedModules(w, holePitchMm);
-  const hMods = getSupportedModules(h, holePitchMm);
-  const commonMods = wMods.filter((m) => hMods.includes(m));
+  const holesX = Math.max(1, Math.round(w / pitch));
+  const holesY = Math.max(1, Math.round(h / pitch));
 
-  if (commonMods.length > 0) {
-    const bestMod = commonMods[0]; // [8, 6, 4] priority
-    const tiling = findBestMultiboardModule(w, h, bestMod, holePitchMm);
+  const effectiveWidthMm = holesX * pitch;
+  const effectiveHeightMm = holesY * pitch;
+
+  const isExactMatch = w === effectiveWidthMm && h === effectiveHeightMm;
+  const tiling = findBestMultiboardModule(effectiveWidthMm, effectiveHeightMm, 'auto', pitch);
+
+  if (isExactMatch) {
     return {
       isValid: true,
       isExactMatch: true,
-      effectiveWidthMm: tiling.actualWidthMm,
-      effectiveHeightMm: tiling.actualHeightMm,
+      effectiveWidthMm,
+      effectiveHeightMm,
       cols: tiling.cols,
       rows: tiling.rows,
       totalTiles: tiling.totalTiles,
@@ -425,57 +429,17 @@ export function validateMultiboardDimensions(
     };
   }
 
-  // If no common module exists, find best tiling fallback
-  const tiling = findBestMultiboardModule(w, h, 'auto', holePitchMm);
-
-  // Scenario A: Both dimensions are standard individually, but incompatible together (e.g. 750 x 100)
-  if (wMods.length > 0 && hMods.length > 0 && commonMods.length === 0) {
-    let explanation = '';
-    if (tiling.actualWidthMm === w && tiling.actualHeightMm !== h) {
-      explanation = `${w} mm richiede tile da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con altezza min ${tiling.actualHeightMm} mm.`;
-    } else if (tiling.actualWidthMm !== w && tiling.actualHeightMm === h) {
-      explanation = `${h} mm richiede tile da ${tiling.moduleSize * holePitchMm} mm (${tiling.moduleSize}×${tiling.moduleSize} MU), con larghezza multipla di ${tiling.moduleSize * holePitchMm} mm.`;
-    } else {
-      explanation = `${w} mm e ${h} mm richiedono moduli differenti e non possono combinarsi con tile quadrate.`;
-    }
-
-    return {
-      isValid: false,
-      isExactMatch: false,
-      effectiveWidthMm: tiling.actualWidthMm,
-      effectiveHeightMm: tiling.actualHeightMm,
-      cols: tiling.cols,
-      rows: tiling.rows,
-      totalTiles: tiling.totalTiles,
-      moduleSize: tiling.moduleSize,
-      warningTitle: `Misura ${w}×${h} mm non realizzabile`,
-      warningMessage: `Tile quadrate: ${explanation} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
-    };
-  }
-
-  // Scenario B: Non-standard single dimension (e.g. 875 mm)
-  const isWNonStd = wMods.length === 0;
-  const isHNonStd = hMods.length === 0;
-  let nonStdDesc = '';
-  if (isWNonStd && isHNonStd) {
-    nonStdDesc = `${w} mm e ${h} mm non sono misure standard Multiboard.`;
-  } else if (isWNonStd) {
-    nonStdDesc = `La larghezza da ${w} mm non è standard Multiboard.`;
-  } else {
-    nonStdDesc = `L'altezza da ${h} mm non è standard Multiboard.`;
-  }
-
   return {
     isValid: false,
     isExactMatch: false,
-    effectiveWidthMm: tiling.actualWidthMm,
-    effectiveHeightMm: tiling.actualHeightMm,
+    effectiveWidthMm,
+    effectiveHeightMm,
     cols: tiling.cols,
     rows: tiling.rows,
     totalTiles: tiling.totalTiles,
     moduleSize: tiling.moduleSize,
-    warningTitle: `Misura non standard`,
-    warningMessage: `${nonStdDesc} Adattata a ${tiling.actualWidthMm}×${tiling.actualHeightMm} mm (${tiling.totalTiles} tiles da ${tiling.moduleSize}×${tiling.moduleSize} MU).`,
+    warningTitle: 'Misura non standard',
+    warningMessage: `La misura ${requestedWidthMm}×${requestedHeightMm} mm non è un multiplo di ${pitch} mm. Adattata a ${effectiveWidthMm}×${effectiveHeightMm} mm (${holesX}×${holesY} MU).`,
   };
 }
 
@@ -807,20 +771,85 @@ export function optimizeOpenGridTiles(
     let currentX = 0;
     for (let c = 0; c < slicesX.length; c++) {
       const w = slicesX[c];
-      const typeStr: TileSize = (w === 8 && h === 8)
-        ? '8x8'
-        : (w === 7 && h === 7)
-          ? '7x7'
-          : (w === 6 && h === 6)
-            ? '6x6'
-            : (w === 5 && h === 5)
-              ? '5x5'
-              : (w === 4 && h === 4)
-                ? '4x4'
-                : 'custom';
+      const typeStr: TileSize = (w === 9 && h === 9)
+        ? '9x9'
+        : (w === 8 && h === 8)
+          ? '8x8'
+          : (w === 7 && h === 7)
+            ? '7x7'
+            : (w === 6 && h === 6)
+              ? '6x6'
+              : (w === 5 && h === 5)
+                ? '5x5'
+                : (w === 4 && h === 4)
+                  ? '4x4'
+                  : (w === 3 && h === 3)
+                    ? '3x3'
+                    : (w === 2 && h === 2)
+                      ? '2x2'
+                      : 'custom';
 
       tiles.push({
         id: `og-tile-${c}-${r}`,
+        col: c,
+        row: r,
+        widthHoles: w,
+        heightHoles: h,
+        originHoleX: currentX,
+        originHoleY: currentY,
+        type: typeStr,
+      });
+      currentX += w;
+    }
+    currentY += h;
+  }
+
+  return Object.freeze(tiles);
+}
+
+/**
+ * Optimizes a Multiboard board of arbitrary dimensions (totalHolesX * totalHolesY)
+ * into a complete, printable set of square core tiles and rectangular perimeter/corner tiles,
+ * using a 25mm pitch.
+ */
+export function optimizeMultiboardTiles(
+  totalHolesX: number,
+  totalHolesY: number,
+  maxTileHoles: number = 8
+): readonly TileDefinition[] {
+  const safeX = Math.max(1, Math.round(totalHolesX));
+  const safeY = Math.max(1, Math.round(totalHolesY));
+  const slicesX = partitionDimension(safeX, maxTileHoles);
+  const slicesY = partitionDimension(safeY, maxTileHoles);
+
+  const tiles: TileDefinition[] = [];
+  let currentY = 0;
+
+  for (let r = 0; r < slicesY.length; r++) {
+    const h = slicesY[r];
+    let currentX = 0;
+    for (let c = 0; c < slicesX.length; c++) {
+      const w = slicesX[c];
+      const typeStr: TileSize = (w === 9 && h === 9)
+        ? '9x9'
+        : (w === 8 && h === 8)
+          ? '8x8'
+          : (w === 7 && h === 7)
+            ? '7x7'
+            : (w === 6 && h === 6)
+              ? '6x6'
+              : (w === 5 && h === 5)
+                ? '5x5'
+                : (w === 4 && h === 4)
+                  ? '4x4'
+                  : (w === 3 && h === 3)
+                    ? '3x3'
+                    : (w === 2 && h === 2)
+                      ? '2x2'
+                      : 'custom';
+
+      tiles.push({
+        id: `mb-tile-${c}-${r}`,
         col: c,
         row: r,
         widthHoles: w,
@@ -850,17 +879,23 @@ export function generateTileMatrix(config: BoardConfig = DEFAULT_BOARD_CONFIG): 
   const { cols, rows, tileWidthHoles, tileHeightHoles } = config;
 
   const tileType: TileSize =
-    tileWidthHoles === 8 && tileHeightHoles === 8
-      ? '8x8'
-      : tileWidthHoles === 7 && tileHeightHoles === 7
-        ? '7x7'
-        : tileWidthHoles === 6 && tileHeightHoles === 6
-          ? '6x6'
-          : tileWidthHoles === 5 && tileHeightHoles === 5
-            ? '5x5'
-            : tileWidthHoles === 4 && tileHeightHoles === 4
-              ? '4x4'
-              : 'custom';
+    tileWidthHoles === 9 && tileHeightHoles === 9
+      ? '9x9'
+      : tileWidthHoles === 8 && tileHeightHoles === 8
+        ? '8x8'
+        : tileWidthHoles === 7 && tileHeightHoles === 7
+          ? '7x7'
+          : tileWidthHoles === 6 && tileHeightHoles === 6
+            ? '6x6'
+            : tileWidthHoles === 5 && tileHeightHoles === 5
+              ? '5x5'
+              : tileWidthHoles === 4 && tileHeightHoles === 4
+                ? '4x4'
+                : tileWidthHoles === 3 && tileHeightHoles === 3
+                  ? '3x3'
+                  : tileWidthHoles === 2 && tileHeightHoles === 2
+                    ? '2x2'
+                    : 'custom';
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {

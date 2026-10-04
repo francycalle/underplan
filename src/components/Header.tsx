@@ -23,6 +23,7 @@ import {
   getCompatibleDimensions,
   STANDARD_MULTIBOARD_DIMENSIONS,
   optimizeOpenGridTiles,
+  optimizeMultiboardTiles,
 } from '../lib/geometry';
 import { BrandLogo } from './BrandLogo';
 import { ChannelDropdown, MiniNewPopover } from './ChannelDropdown';
@@ -38,6 +39,18 @@ export const OPENGRID_BED_OPTIONS = [
   { size: 4, label: '4×4 OU (112×112 mm)' },
   { size: 3, label: '3×3 OU (84×84 mm)' },
   { size: 2, label: '2×2 OU (56×56 mm)' },
+];
+
+export const MULTIBOARD_BED_OPTIONS = [
+  { size: 0, label: 'Auto (Best Fit)' },
+  { size: 9, label: '9×9 MU (225×225 mm) (Bambu Lab 256 / large beds)' },
+  { size: 8, label: '8×8 MU (200×200 mm) (Standard Multiboard)' },
+  { size: 7, label: '7×7 MU (175×175 mm)' },
+  { size: 6, label: '6×6 MU (150×150 mm) (Small beds: Bambu A1 Mini, Prusa Mini)' },
+  { size: 5, label: '5×5 MU (125×125 mm)' },
+  { size: 4, label: '4×4 MU (100×100 mm)' },
+  { size: 3, label: '3×3 MU (75×75 mm)' },
+  { size: 2, label: '2×2 MU (50×50 mm)' },
 ];
 
 const PRESET_COLORS = [
@@ -214,17 +227,24 @@ export const Header: React.FC<HeaderProps> = ({
       setInputHeightMm('504');
       setWarningInfo(null);
     } else {
+      const maxTile = boardConfig.maxTileHoles ?? 0;
+      const maxTileForPart = maxTile === 0 ? 8 : maxTile;
+      const initialW = 1200;
+      const initialH = 600;
+      const holesX = Math.round(initialW / 25);
+      const holesY = Math.round(initialH / 25);
+      const optimized = optimizeMultiboardTiles(holesX, holesY, maxTileForPart);
       onUpdateConfig({
         platform: 'multiboard',
         holePitchMm: 25,
-        customTiles: undefined,
-        maxTileHoles: undefined,
-        tileWidthHoles: 8,
-        tileHeightHoles: 8,
-        cols: 6,
-        rows: 3,
-        customDeskWidthMm: 1200,
-        customDeskHeightMm: 600,
+        maxTileHoles: maxTile,
+        customTiles: optimized,
+        tileWidthHoles: maxTileForPart,
+        tileHeightHoles: maxTileForPart,
+        cols: Math.ceil(holesX / maxTileForPart),
+        rows: Math.ceil(holesY / maxTileForPart),
+        customDeskWidthMm: initialW,
+        customDeskHeightMm: initialH,
       });
       setInputWidthMm('1200');
       setInputHeightMm('600');
@@ -271,25 +291,34 @@ export const Header: React.FC<HeaderProps> = ({
           customDeskHeightMm: effectiveH,
         });
       } else {
-        const validation = validateMultiboardDimensions(w, h, boardConfig.holePitchMm);
+        const maxTile = maxTileOverride ?? (boardConfig.maxTileHoles ?? 0);
+        const maxTileForPart = maxTile === 0 ? 8 : maxTile;
+        const holesX = Math.max(2, Math.round(w / 25));
+        const holesY = Math.max(2, Math.round(h / 25));
+        const effectiveW = holesX * 25;
+        const effectiveH = holesY * 25;
+        const optimized = optimizeMultiboardTiles(holesX, holesY, maxTileForPart);
         if (explicitWarning !== undefined) {
           setWarningInfo(explicitWarning);
-        } else if (!validation.isExactMatch && validation.warningTitle && validation.warningMessage) {
+        } else if (effectiveW !== w || effectiveH !== h) {
           setWarningInfo({
-            title: validation.warningTitle,
-            message: validation.warningMessage,
+            title: `Dimensioni adattate alla griglia Multiboard (25 mm)`,
+            message: `Superficie impostata su ${effectiveW}×${effectiveH} mm (${holesX}×${holesY} MU).`,
           });
         } else {
           setWarningInfo(null);
         }
         onUpdateConfig({
-          customTiles: undefined,
-          cols: validation.cols,
-          rows: validation.rows,
-          tileWidthHoles: validation.moduleSize,
-          tileHeightHoles: validation.moduleSize,
-          customDeskWidthMm: validation.effectiveWidthMm,
-          customDeskHeightMm: validation.effectiveHeightMm,
+          platform: 'multiboard',
+          holePitchMm: 25,
+          maxTileHoles: maxTile,
+          customTiles: optimized,
+          cols: Math.ceil(holesX / maxTileForPart),
+          rows: Math.ceil(holesY / maxTileForPart),
+          tileWidthHoles: maxTileForPart,
+          tileHeightHoles: maxTileForPart,
+          customDeskWidthMm: effectiveW,
+          customDeskHeightMm: effectiveH,
         });
       }
     }
@@ -631,17 +660,25 @@ export const Header: React.FC<HeaderProps> = ({
       };
       onCreateProject?.(trimmed, initialConfig);
     } else {
-      const validation = validateMultiboardDimensions(rawW, rawH, 25);
+      const holesX = Math.max(2, Math.round(rawW / 25));
+      const holesY = Math.max(2, Math.round(rawH / 25));
+      const effectiveW = holesX * 25;
+      const effectiveH = holesY * 25;
+      const maxTile = newProjMaxTile ?? 0;
+      const maxTileForPart = maxTile === 0 ? 8 : maxTile;
+      const customTiles = optimizeMultiboardTiles(holesX, holesY, maxTileForPart);
       const initialConfig: BoardConfig = {
         ...DEFAULT_BOARD_CONFIG,
         platform: 'multiboard',
         holePitchMm: 25,
-        cols: validation.cols,
-        rows: validation.rows,
-        tileWidthHoles: validation.moduleSize,
-        tileHeightHoles: validation.moduleSize,
-        customDeskWidthMm: validation.effectiveWidthMm,
-        customDeskHeightMm: validation.effectiveHeightMm,
+        customTiles,
+        maxTileHoles: maxTile,
+        cols: Math.ceil(holesX / maxTileForPart),
+        rows: Math.ceil(holesY / maxTileForPart),
+        tileWidthHoles: maxTileForPart,
+        tileHeightHoles: maxTileForPart,
+        customDeskWidthMm: effectiveW,
+        customDeskHeightMm: effectiveH,
       };
       onCreateProject?.(trimmed, initialConfig);
     }
@@ -652,9 +689,9 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const renderTilePreview = (
-    cols: number,
-    rows: number,
-    moduleSize: number,
+    _cols: number,
+    _rows: number,
+    _moduleSize: number,
     totalMmW: number,
     totalMmH: number,
     isOGPlatform: boolean = false,
@@ -663,170 +700,121 @@ export const Header: React.FC<HeaderProps> = ({
   ) => {
     const maxBoxW = 310;
     const maxBoxH = 100;
-    const gap = 3;
 
-    if (isOGPlatform) {
-      const currentMax = maxTileOverride ?? (boardConfig.maxTileHoles || 8);
-      const hX = Math.max(4, Math.round(totalMmW / 28));
-      const hY = Math.max(4, Math.round(totalMmH / 28));
-      const activeTiles = customTilesList && customTilesList.length > 0 && Math.round(totalMmW / 28) === Math.max(4, Math.round((boardConfig.customDeskWidthMm || totalMmW) / 28))
-        ? customTilesList
-        : optimizeOpenGridTiles(hX, hY, currentMax);
+    const pitchMm = isOGPlatform ? 28 : 25;
+    const unitLabel = isOGPlatform ? 'OU' : 'MU';
+    const currentMaxRaw = maxTileOverride ?? (boardConfig.maxTileHoles ?? (isOGPlatform ? 8 : 0));
+    const currentMax = currentMaxRaw === 0 ? 8 : currentMaxRaw;
 
-      const totalHolesW = hX;
-      const totalHolesH = hY;
+    const hX = Math.max(1, Math.round(totalMmW / pitchMm));
+    const hY = Math.max(1, Math.round(totalMmH / pitchMm));
 
-      const scaleX = (maxBoxW - 12) / (totalHolesW * 28);
-      const scaleY = (maxBoxH - 12) / (totalHolesH * 28);
-      const scale = Math.min(scaleX, scaleY);
+    const activeTiles = customTilesList && customTilesList.length > 0 && Math.round(totalMmW / pitchMm) === Math.max(1, Math.round((boardConfig.customDeskWidthMm || totalMmW) / pitchMm))
+      ? customTilesList
+      : (isOGPlatform
+          ? optimizeOpenGridTiles(hX, hY, currentMax)
+          : optimizeMultiboardTiles(hX, hY, currentMax));
 
-      const svgW = totalHolesW * 28 * scale;
-      const svgH = totalHolesH * 28 * scale;
+    const totalHolesW = hX;
+    const totalHolesH = hY;
 
-      const tileGroupsMap = new Map<string, { count: number; w: number; h: number; mmW: number; mmH: number }>();
-      for (const t of activeTiles) {
-        const key = `${t.widthHoles}×${t.heightHoles}`;
-        const existing = tileGroupsMap.get(key);
-        if (existing) {
-          existing.count += 1;
-        } else {
-          tileGroupsMap.set(key, {
-            count: 1,
-            w: t.widthHoles,
-            h: t.heightHoles,
-            mmW: t.widthHoles * 28,
-            mmH: t.heightHoles * 28,
-          });
-        }
-      }
-      const tileGroups = Array.from(tileGroupsMap.values()).sort((a, b) => (b.w * b.h) - (a.w * a.h));
+    const scaleX = (maxBoxW - 12) / (totalHolesW * pitchMm);
+    const scaleY = (maxBoxH - 12) / (totalHolesH * pitchMm);
+    const scale = Math.min(scaleX, scaleY);
 
-      return (
-        <div className="flex flex-col gap-2.5 p-3 rounded-[14px] bg-[#0E1015] border border-[#232632] shadow-inner">
-          {/* Hero Blueprint Box: prominent and high contrast */}
-          <div className="flex items-center justify-center w-full min-h-[96px] py-1 bg-[#090A0D]/80 rounded-[10px] border border-[#1C1F28] overflow-hidden">
-            <svg width={Math.max(40, svgW)} height={Math.max(30, svgH)} className="overflow-visible">
-              {activeTiles.map((t) => {
-                const x = t.originHoleX * 28 * scale;
-                const y = t.originHoleY * 28 * scale;
-                const w = t.widthHoles * 28 * scale;
-                const h = t.heightHoles * 28 * scale;
-                const showBadge = w >= 20 && h >= 13;
-                const fontSize = Math.min(10.5, Math.max(7.5, Math.min(w * 0.28, h * 0.42)));
+    const svgW = totalHolesW * pitchMm * scale;
+    const svgH = totalHolesH * pitchMm * scale;
 
-                return (
-                  <g key={t.id}>
-                    <rect
-                      x={x + 0.5}
-                      y={y + 0.5}
-                      width={Math.max(2, w - 1)}
-                      height={Math.max(2, h - 1)}
-                      rx={Math.max(1.5, Math.min(3.5, w * 0.06))}
-                      fill="#161922"
-                      stroke="#38BDF8"
-                      strokeOpacity={0.7}
-                      strokeWidth={1.4}
-                    />
-                    {showBadge && (
-                      <text
-                        x={x + w / 2}
-                        y={y + h / 2}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fill="#F1F5F9"
-                        fontSize={fontSize}
-                        fontFamily="'Figtree', sans-serif"
-                        fontWeight="800"
-                        letterSpacing={0.2}
-                      >
-                        {t.widthHoles}×{t.heightHoles}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-
-          {/* Clean Orderly Breakdown Table */}
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#1F222A]">
-            <div className="text-[11px] font-['Figtree'] font-bold uppercase tracking-wider text-white/50 px-0.5">
-              {activeTiles.length} Piastre Totali
-            </div>
-            <div className="flex flex-col divide-y divide-[#1F222A]/60 max-h-[130px] overflow-y-auto pr-0.5">
-              {tileGroups.map((grp) => (
-                <div
-                  key={`${grp.w}x${grp.h}`}
-                  className="flex items-center justify-between py-1.5 px-0.5 text-xs font-['Figtree']"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white/90">
-                      {grp.count}×
-                    </span>
-                    <span className="font-medium text-slate-300">
-                      Tiles {grp.w}×{grp.h} OU
-                    </span>
-                  </div>
-                  <span className="text-white/50 font-medium text-[11px]">
-                    {grp.mmW}×{grp.mmH} mm
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const tileByW = (maxBoxW - (cols - 1) * gap) / cols;
-    const tileByH = (maxBoxH - (rows - 1) * gap) / rows;
-    const tileSize = Math.max(6, Math.min(24, Math.min(tileByW, tileByH)));
-
-    const svgW = cols * tileSize + (cols - 1) * gap;
-    const svgH = rows * tileSize + (rows - 1) * gap;
-
-    const tiles = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const x = c * (tileSize + gap);
-        const y = r * (tileSize + gap);
-        tiles.push(
-          <g key={`${c}-${r}`}>
-            <rect
-              x={x}
-              y={y}
-              width={tileSize}
-              height={tileSize}
-              rx={Math.max(1.5, tileSize * 0.16)}
-              fill="#181A20"
-              stroke="#383C48"
-              strokeWidth={1}
-            />
-            <circle
-              cx={x + tileSize / 2}
-              cy={y + tileSize / 2}
-              r={Math.max(1, tileSize * 0.12)}
-              fill="#4B5563"
-            />
-          </g>
-        );
+    const tileGroupsMap = new Map<string, { count: number; w: number; h: number; mmW: number; mmH: number }>();
+    for (const t of activeTiles) {
+      const key = `${t.widthHoles}×${t.heightHoles}`;
+      const existing = tileGroupsMap.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        tileGroupsMap.set(key, {
+          count: 1,
+          w: t.widthHoles,
+          h: t.heightHoles,
+          mmW: t.widthHoles * pitchMm,
+          mmH: t.heightHoles * pitchMm,
+        });
       }
     }
+    const tileGroups = Array.from(tileGroupsMap.values()).sort((a, b) => (b.w * b.h) - (a.w * a.h));
 
     return (
-      <div className="flex flex-col items-center justify-center p-3 rounded-[14px] bg-[#0E1015] border border-[#232632]">
-        <div className="flex items-center justify-center w-full min-h-[96px] py-1 bg-[#090A0D]/80 rounded-[10px] border border-[#1C1F28]">
-          <svg width={svgW} height={svgH} className="overflow-visible">
-            {tiles}
+      <div className="flex flex-col gap-2.5 p-3 rounded-[14px] bg-[#0E1015] border border-[#232632] shadow-inner">
+        {/* Hero Blueprint Box: prominent and high contrast */}
+        <div className="flex items-center justify-center w-full min-h-[96px] py-1 bg-[#090A0D]/80 rounded-[10px] border border-[#1C1F28] overflow-hidden">
+          <svg width={Math.max(40, svgW)} height={Math.max(30, svgH)} className="overflow-visible">
+            {activeTiles.map((t) => {
+              const x = t.originHoleX * pitchMm * scale;
+              const y = t.originHoleY * pitchMm * scale;
+              const w = t.widthHoles * pitchMm * scale;
+              const h = t.heightHoles * pitchMm * scale;
+              const showBadge = w >= 20 && h >= 13;
+              const fontSize = Math.min(10.5, Math.max(7.5, Math.min(w * 0.28, h * 0.42)));
+
+              return (
+                <g key={t.id}>
+                  <rect
+                    x={x + 0.5}
+                    y={y + 0.5}
+                    width={Math.max(2, w - 1)}
+                    height={Math.max(2, h - 1)}
+                    rx={Math.max(1.5, Math.min(3.5, w * 0.06))}
+                    fill="#161922"
+                    stroke="#38BDF8"
+                    strokeOpacity={0.7}
+                    strokeWidth={1.4}
+                  />
+                  {showBadge && (
+                    <text
+                      x={x + w / 2}
+                      y={y + h / 2}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="#F1F5F9"
+                      fontSize={fontSize}
+                      fontFamily="'Figtree', sans-serif"
+                      fontWeight="800"
+                      letterSpacing={0.2}
+                    >
+                      {t.widthHoles}×{t.heightHoles}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
           </svg>
         </div>
-        <div className="flex items-center justify-between w-full mt-2 pt-2 border-t border-[#1F222A] text-xs font-['Figtree']">
-          <span className="font-black text-white">
-            {cols * rows} tiles <span className="text-[#929394] font-medium">({cols}×{rows} • {moduleSize}×{moduleSize} MU)</span>
-          </span>
-          <span className="font-bold text-[#38BDF8]">
-            {totalMmW}×{totalMmH} mm
-          </span>
+
+        {/* Clean Orderly Breakdown Table */}
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-[#1F222A]">
+          <div className="text-[11px] font-['Figtree'] font-bold uppercase tracking-wider text-white/50 px-0.5">
+            {activeTiles.length} Piastre Totali
+          </div>
+          <div className="flex flex-col divide-y divide-[#1F222A]/60 max-h-[130px] overflow-y-auto pr-0.5">
+            {tileGroups.map((grp) => (
+              <div
+                key={`${grp.w}x${grp.h}`}
+                className="flex items-center justify-between py-1.5 px-0.5 text-xs font-['Figtree']"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white/90">
+                    {grp.count}×
+                  </span>
+                  <span className="font-medium text-slate-300">
+                    Tiles {grp.w}×{grp.h} {unitLabel}
+                  </span>
+                </div>
+                <span className="text-white/50 font-medium text-[11px]">
+                  {grp.mmW}×{grp.mmH} mm
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -1087,39 +1075,39 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                       </div>
 
-                      {/* openGrid Tile Size Dropdown */}
-                      {isOpenGrid && (
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-['Figtree'] font-bold text-[#929394] uppercase tracking-wider">
-                              Tile Size
-                            </label>
-                            <span className="text-[10px] font-['Figtree'] font-semibold text-white/60">
-                              {(boardConfig.maxTileHoles || 8)}×{(boardConfig.maxTileHoles || 8)} OU ({((boardConfig.maxTileHoles || 8) * 28)}×{((boardConfig.maxTileHoles || 8) * 28)} mm)
-                            </span>
-                          </div>
-                          <div className="relative">
-                            <select
-                              value={boardConfig.maxTileHoles || 8}
-                              onChange={(e) => {
-                                const newMax = parseInt(e.target.value, 10);
-                                applyMmDimensions(inputWidthMm, inputHeightMm, null, newMax);
-                              }}
-                              className="w-full appearance-none px-3 py-2 pr-8 rounded-[10px] bg-[#0E0F12] border border-[#2A2D36] hover:border-[#383C48] text-white text-xs font-['Figtree'] font-bold focus:outline-none focus:border-[#383C48] cursor-pointer transition-colors"
-                            >
-                              {OPENGRID_BED_OPTIONS.map((opt) => (
-                                <option key={opt.size} value={opt.size} className="bg-[#12141A] text-white">
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown
-                              size={14}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                            />
-                          </div>
+                      {/* Tile Size Dropdown */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-['Figtree'] font-bold text-[#929394] uppercase tracking-wider">
+                            Tile Size
+                          </label>
+                          <span className="text-[10px] font-['Figtree'] font-semibold text-white/60">
+                            {(boardConfig.maxTileHoles === 0 || (!boardConfig.maxTileHoles && !isOpenGrid))
+                              ? 'Auto Best Fit'
+                              : `${boardConfig.maxTileHoles || 8}×${boardConfig.maxTileHoles || 8} ${isOpenGrid ? 'OU' : 'MU'} (${(boardConfig.maxTileHoles || 8) * (isOpenGrid ? 28 : 25)}×${(boardConfig.maxTileHoles || 8) * (isOpenGrid ? 28 : 25)} mm)`}
+                          </span>
                         </div>
-                      )}
+                        <div className="relative">
+                          <select
+                            value={boardConfig.maxTileHoles ?? (isOpenGrid ? 8 : 0)}
+                            onChange={(e) => {
+                              const newMax = parseInt(e.target.value, 10);
+                              applyMmDimensions(inputWidthMm, inputHeightMm, null, newMax);
+                            }}
+                            className="w-full appearance-none px-3 py-2 pr-8 rounded-[10px] bg-[#0E0F12] border border-[#2A2D36] hover:border-[#383C48] text-white text-xs font-['Figtree'] font-bold focus:outline-none focus:border-[#383C48] cursor-pointer transition-colors"
+                          >
+                            {(isOpenGrid ? OPENGRID_BED_OPTIONS : MULTIBOARD_BED_OPTIONS).map((opt) => (
+                              <option key={opt.size} value={opt.size} className="bg-[#12141A] text-white">
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            size={14}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                          />
+                        </div>
+                      </div>
 
                       {/* Grid Dimensions: Label outside the dark container */}
                       <div className="flex flex-col gap-1.5">
@@ -1313,6 +1301,7 @@ export const Header: React.FC<HeaderProps> = ({
                               setNewProjPlatform('multiboard');
                               setNewProjWidthMm('1200');
                               setNewProjHeightMm('600');
+                              setNewProjMaxTile(0);
                               setNewWarningInfo(null);
                             }}
                             className={`py-1.5 px-3 rounded-[9px] text-xs font-['Figtree'] font-black transition-all ${
@@ -1329,6 +1318,7 @@ export const Header: React.FC<HeaderProps> = ({
                               setNewProjPlatform('opengrid');
                               setNewProjWidthMm('1008');
                               setNewProjHeightMm('504');
+                              setNewProjMaxTile(8);
                               setNewWarningInfo(null);
                             }}
                             className={`py-1.5 px-3 rounded-[9px] text-xs font-['Figtree'] font-black transition-all ${
@@ -1342,38 +1332,38 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                       </div>
 
-                      {/* openGrid Tile Size Dropdown (New Project) */}
-                      {newProjPlatform === 'opengrid' && (
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-['Figtree'] font-bold text-[#929394] uppercase tracking-wider">
-                              Tile Size
-                            </label>
-                            <span className="text-[10px] font-['Figtree'] font-semibold text-white/60">
-                              {newProjMaxTile}×{newProjMaxTile} OU ({newProjMaxTile * 28}×{newProjMaxTile * 28} mm)
-                            </span>
-                          </div>
-                          <div className="relative">
-                            <select
-                              value={newProjMaxTile}
-                              onChange={(e) => {
-                                setNewProjMaxTile(parseInt(e.target.value, 10));
-                              }}
-                              className="w-full appearance-none px-3 py-2 pr-8 rounded-[10px] bg-[#0E0F12] border border-[#2A2D36] hover:border-[#383C48] text-white text-xs font-['Figtree'] font-bold focus:outline-none focus:border-[#383C48] cursor-pointer transition-colors"
-                            >
-                              {OPENGRID_BED_OPTIONS.map((opt) => (
-                                <option key={opt.size} value={opt.size} className="bg-[#12141A] text-white">
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown
-                              size={14}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                            />
-                          </div>
+                      {/* Tile Size Dropdown (New Project) */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-['Figtree'] font-bold text-[#929394] uppercase tracking-wider">
+                            Tile Size
+                          </label>
+                          <span className="text-[10px] font-['Figtree'] font-semibold text-white/60">
+                            {newProjMaxTile === 0
+                              ? 'Auto Best Fit'
+                              : `${newProjMaxTile}×${newProjMaxTile} ${newProjPlatform === 'opengrid' ? 'OU' : 'MU'} (${newProjMaxTile * (newProjPlatform === 'opengrid' ? 28 : 25)}×${newProjMaxTile * (newProjPlatform === 'opengrid' ? 28 : 25)} mm)`}
+                          </span>
                         </div>
-                      )}
+                        <div className="relative">
+                          <select
+                            value={newProjMaxTile}
+                            onChange={(e) => {
+                              setNewProjMaxTile(parseInt(e.target.value, 10));
+                            }}
+                            className="w-full appearance-none px-3 py-2 pr-8 rounded-[10px] bg-[#0E0F12] border border-[#2A2D36] hover:border-[#383C48] text-white text-xs font-['Figtree'] font-bold focus:outline-none focus:border-[#383C48] cursor-pointer transition-colors"
+                          >
+                            {(newProjPlatform === 'opengrid' ? OPENGRID_BED_OPTIONS : MULTIBOARD_BED_OPTIONS).map((opt) => (
+                              <option key={opt.size} value={opt.size} className="bg-[#12141A] text-white">
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            size={14}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                          />
+                        </div>
+                      </div>
 
                       {/* Grid Dimensions: Label outside the dark container */}
                       <div className="flex flex-col gap-1.5">

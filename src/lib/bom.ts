@@ -269,23 +269,32 @@ export function aggregateTiles(
 
     const items: BOMItem[] = [];
     for (const [, g] of groups.entries()) {
+      const is9x9 = g.width === 9 && g.height === 9;
       const is8x8 = g.width === 8 && g.height === 8;
       const is7x7 = g.width === 7 && g.height === 7;
       const is6x6 = g.width === 6 && g.height === 6;
       const is5x5 = g.width === 5 && g.height === 5;
       const is4x4 = g.width === 4 && g.height === 4;
+      const is3x3 = g.width === 3 && g.height === 3;
+      const is2x2 = g.width === 2 && g.height === 2;
 
-      const partNumber = is8x8
-        ? `${prefix}-TILE-8X8`
-        : is7x7
-          ? `${prefix}-TILE-7X7`
-          : is6x6
-            ? `${prefix}-TILE-6X6`
-            : is5x5
-              ? `${prefix}-TILE-5X5`
-              : is4x4
-                ? `${prefix}-TILE-4X4`
-                : `${prefix}-TILE-${g.width}X${g.height}`;
+      const partNumber = is9x9
+        ? `${prefix}-TILE-9X9`
+        : is8x8
+          ? `${prefix}-TILE-8X8`
+          : is7x7
+            ? `${prefix}-TILE-7X7`
+            : is6x6
+              ? `${prefix}-TILE-6X6`
+              : is5x5
+                ? `${prefix}-TILE-5X5`
+                : is4x4
+                  ? `${prefix}-TILE-4X4`
+                  : is3x3
+                    ? `${prefix}-TILE-3X3`
+                    : is2x2
+                      ? `${prefix}-TILE-2X2`
+                      : `${prefix}-TILE-${g.width}X${g.height}`;
 
       const widthMm = g.width * holePitchMm;
       const heightMm = g.height * holePitchMm;
@@ -294,33 +303,49 @@ export function aggregateTiles(
       let description: string;
 
       if (platform === 'opengrid') {
-        name = is8x8
-          ? 'openGrid Tile (8x8)'
-          : is7x7
-            ? 'openGrid Tile (7x7)'
-            : is6x6
-              ? 'openGrid Tile (6x6)'
-              : is5x5
-                ? 'openGrid Tile (5x5)'
-                : is4x4
-                  ? 'openGrid Tile (4x4)'
-                  : `openGrid Custom Tile (${g.width}x${g.height})`;
+        name = is9x9
+          ? 'openGrid Tile (9x9)'
+          : is8x8
+            ? 'openGrid Tile (8x8)'
+            : is7x7
+              ? 'openGrid Tile (7x7)'
+              : is6x6
+                ? 'openGrid Tile (6x6)'
+                : is5x5
+                  ? 'openGrid Tile (5x5)'
+                  : is4x4
+                    ? 'openGrid Tile (4x4)'
+                    : is3x3
+                      ? 'openGrid Tile (3x3)'
+                      : is2x2
+                        ? 'openGrid Tile (2x2)'
+                        : `openGrid Tile (${g.width}x${g.height})`;
         description = `Standard openGrid modular tile (${widthMm}×${heightMm}mm) with 28mm pitch.`;
       } else {
-        name = is8x8
-          ? 'Multiboard Standard Tile (8x8)'
-          : is6x6
-            ? 'Multiboard Tile (6x6)'
-            : is4x4
-              ? 'Multiboard Compact Tile (4x4)'
-              : `Multiboard Custom Tile (${g.width}x${g.height})`;
+        name = is9x9
+          ? 'Multiboard Large Tile (9x9)'
+          : is8x8
+            ? 'Multiboard Standard Tile (8x8)'
+            : is7x7
+              ? 'Multiboard Tile (7x7)'
+              : is6x6
+                ? 'Multiboard Tile (6x6)'
+                : is5x5
+                  ? 'Multiboard Tile (5x5)'
+                  : is4x4
+                    ? 'Multiboard Compact Tile (4x4)'
+                    : is3x3
+                      ? 'Multiboard Micro Tile (3x3)'
+                      : is2x2
+                        ? 'Multiboard Mini Tile (2x2)'
+                        : `Multiboard Tile (${g.width}x${g.height})`;
         description = is8x8
           ? 'Standard Multiboard 8x8 core grid tile for wall or under-desk cable management.'
           : is6x6
             ? 'Multiboard 6x6 mid-size grid tile for compact or medium workspaces.'
             : is4x4
               ? 'Multiboard 4x4 compact grid tile for smaller workspaces or tight corners.'
-              : `Custom Multiboard ${g.width}x${g.height} tile (${widthMm}x${heightMm}mm).`;
+              : `Multiboard modular tile (${widthMm}×${heightMm}mm) with 25mm pitch.`;
       }
 
       items.push({

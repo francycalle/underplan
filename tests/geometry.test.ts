@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_BOARD_CONFIG,
+  optimizeMultiboardTiles,
   calculateBoardDimensions,
   generateTileMatrix,
   holeToTileCoord,
@@ -613,16 +614,13 @@ test('getSupportedModules returns correct Multiboard tile modules', () => {
   assert.deepEqual(getSupportedModules(875), []);
 });
 
-test('validateMultiboardDimensions detects incompatible 750x100 mm and generates explanatory warning', () => {
+test('validateMultiboardDimensions accepts 750x100 mm with parametric rectangular tile partitioning', () => {
   const result = validateMultiboardDimensions(750, 100);
-  assert.equal(result.isValid, false);
-  assert.equal(result.isExactMatch, false);
+  assert.equal(result.isValid, true);
+  assert.equal(result.isExactMatch, true);
   assert.equal(result.effectiveWidthMm, 750);
-  assert.equal(result.effectiveHeightMm, 150);
-  assert.equal(result.warningTitle, 'Misura 750×100 mm non realizzabile');
-  assert.ok(result.warningMessage?.includes('Tile quadrate'));
-  assert.ok(result.warningMessage?.includes('750 mm richiede tile da 150 mm (6×6 MU)'));
-  assert.ok(result.warningMessage?.includes('750×150 mm'));
+  assert.equal(result.effectiveHeightMm, 100);
+  assert.equal(result.warningTitle, null);
 });
 
 test('validateMultiboardDimensions accepts standard compatible pairs', () => {
@@ -641,12 +639,24 @@ test('validateMultiboardDimensions accepts standard compatible pairs', () => {
   assert.equal(result800x600.effectiveHeightMm, 600);
 });
 
-test('validateMultiboardDimensions adjusts non-standard dimensions', () => {
-  const result875 = validateMultiboardDimensions(875, 400);
-  assert.equal(result875.isExactMatch, false);
-  assert.equal(result875.effectiveWidthMm, 800);
-  assert.equal(result875.effectiveHeightMm, 400);
-  assert.ok(result875.warningTitle?.includes('non standard'));
+test('validateMultiboardDimensions adjusts non-standard dimensions that are not multiples of 25mm', () => {
+  const result873 = validateMultiboardDimensions(873, 400);
+  assert.equal(result873.isExactMatch, false);
+  assert.equal(result873.effectiveWidthMm, 875);
+  assert.equal(result873.effectiveHeightMm, 400);
+  assert.ok(result873.warningTitle?.includes('non standard'));
+});
+
+test('optimizeMultiboardTiles partitions arbitrary hole matrix into max square tiles + perimeter rectangular tiles', () => {
+  const tiles = optimizeMultiboardTiles(17, 8, 5);
+  assert.equal(tiles.length, 8);
+  assert.equal(tiles[0].widthHoles, 5);
+  assert.equal(tiles[0].heightHoles, 5);
+  assert.equal(tiles[0].type, '5x5');
+
+  const cornerEdgeTile = tiles.find((t) => t.col === 3 && t.row === 1);
+  assert.equal(cornerEdgeTile?.widthHoles, 2);
+  assert.equal(cornerEdgeTile?.heightHoles, 3);
 });
 
 test('getCompatibleDimensions returns valid sequence without incompatible steps (e.g. 800x200 down to 800x100)', () => {

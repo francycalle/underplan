@@ -59,7 +59,7 @@ export type GridPlatform = 'multiboard' | 'opengrid';
  * - '4x4': 4x4 holes (100x100mm Multiboard, 112x112mm openGrid)
  * - 'custom': user-defined hole dimensions
  */
-export type TileSize = '8x8' | '7x7' | '6x6' | '5x5' | '4x4' | 'custom';
+export type TileSize = '9x9' | '8x8' | '7x7' | '6x6' | '5x5' | '4x4' | '3x3' | '2x2' | 'custom';
 
 /**
  * Representation of an individual tile placed in the board matrix.
