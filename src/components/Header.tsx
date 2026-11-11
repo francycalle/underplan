@@ -52,6 +52,8 @@ const PRESET_COLORS = [
 ];
 
 interface HeaderProps {
+  onExportJSON?: () => void;
+  onImportJSON?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   boardConfig: BoardConfig;
   onUpdateConfig: (newConfig: Partial<BoardConfig>) => void;
   onClearBoard?: () => void;
@@ -79,6 +81,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  onExportJSON,
+  onImportJSON,
   boardConfig,
   onUpdateConfig,
   onExportCSV,
@@ -1778,6 +1782,34 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>Download SVG</span>
                     </button>
                   )}
+                  {onExportJSON && (
+                    <button
+                      onClick={() => {
+                        onExportJSON();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-200 hover:bg-[#1C1D23] transition-colors"
+                    >
+                      <Download size={14} className="text-[#38BDF8]" />
+                      <span>Export Plan (JSON)</span>
+                    </button>
+                  )}
+                  {onImportJSON && (
+                    <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-200 hover:bg-[#1C1D23] cursor-pointer transition-colors">
+                      <Download size={14} className="text-[#EC4899] rotate-180" />
+                      <span>Import Plan (JSON)</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        className="hidden"
+                        onChange={(e) => {
+                          onImportJSON(e);
+                          setIsExportMenuOpen(false);
+                        }}
+                      />
+                    </label>
+                  )}
+
                 </div>
               )}
             </div>

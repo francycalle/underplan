@@ -572,7 +572,72 @@ export default function App() {
     showToast('Canvas cleared', 'info');
   };
 
-  const handleExportCSV = () => {
+    const handleExportJSON = () => {
+    try {
+      const planPayload = {
+        schemaVersion: '1.0.0',
+        exportedAt: new Date().toISOString(),
+        projectTitle: typeof projectTitle !== 'undefined' ? projectTitle : 'My Setup',
+        boardConfig,
+        channels,
+        categories,
+        customAccessories,
+        projects,
+        activeProjectId,
+      };
+
+      const blob = new Blob([JSON.stringify(planPayload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = ((typeof projectTitle !== 'undefined' && projectTitle) ? projectTitle : 'underplan-config').replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '_');
+      a.download = `${safeTitle}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export plan failed:', err);
+      alert('Failed to export plan. Please check the console for details.');
+    }
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = typeof event.target?.result === "string" ? event.target.result : "";
+        if (!text) return;
+        const payload = JSON.parse(text);
+        const data = payload.data || payload;
+
+        if (!data.boardConfig || !Array.isArray(data.channels)) {
+          throw new Error('Invalid UnderPlan configuration structure');
+        }
+
+        if (data.boardConfig && typeof setBoardConfig === 'function') setBoardConfig(data.boardConfig);
+        if (Array.isArray(data.channels) && typeof setChannels === 'function') setChannels(data.channels);
+        if (Array.isArray(data.categories) && typeof setCategories === 'function') setCategories(data.categories);
+        if (Array.isArray(data.customAccessories) && typeof setCustomAccessories === 'function') setCustomAccessories(data.customAccessories);
+        if (typeof data.projectTitle === 'string' && typeof setProjectTitle === 'function') setProjectTitle(data.projectTitle);
+        if (Array.isArray(data.projects) && typeof setProjects === 'function') setProjects(data.projects);
+        if (data.activeProjectId && typeof setActiveProjectId === 'function') setActiveProjectId(data.activeProjectId);
+
+        alert('Plan imported successfully!');
+      } catch (err) {
+        console.error('Import plan failed:', err);
+        alert('Failed to parse configuration file. Please ensure it is a valid UnderPlan JSON export.');
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+const handleExportCSV = () => {
     const csv = formatBOMAsCSV(bom);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -738,6 +803,8 @@ export default function App() {
           onUpdateConfig={handleUpdateConfig}
           onClearBoard={handleClearBoard}
           onExportCSV={handleExportCSV}
+          onExportJSON={handleExportJSON}
+          onImportJSON={handleImportJSON}
           onCopyBOM={handleCopyBOM}
           onExportPNG={handleExportPNG}
           onExportSVG={handleExportSVG}
