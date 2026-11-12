@@ -10,14 +10,21 @@ interface NewCategoryModalProps {
 
 const PRESET_COLORS = [
   { label: 'Blue', hex: '#3B82F6' },
-  { label: 'Lime Green', hex: '#4FDA48' },
-  { label: 'Amber', hex: '#F59E0B' },
-  { label: 'Cyan', hex: '#06B6D4' },
-  { label: 'Purple', hex: '#8B5CF6' },
-  { label: 'Emerald', hex: '#10B981' },
-  { label: 'Rose', hex: '#F43F5E' },
   { label: 'Sky', hex: '#0EA5E9' },
+  { label: 'Cyan', hex: '#06B6D4' },
+  { label: 'Teal', hex: '#14B8A6' },
+  { label: 'Emerald', hex: '#10B981' },
+  { label: 'Lime Green', hex: '#4FDA48' },
+  { label: 'Lime', hex: '#84CC16' },
+  { label: 'Yellow', hex: '#EAB308' },
+  { label: 'Amber', hex: '#F59E0B' },
   { label: 'Orange', hex: '#F97316' },
+  { label: 'Red', hex: '#EF4444' },
+  { label: 'Rose', hex: '#F43F5E' },
+  { label: 'Pink', hex: '#EC4899' },
+  { label: 'Purple', hex: '#8B5CF6' },
+  { label: 'White', hex: '#F8FAFC' },
+  { label: 'Slate', hex: '#64748B' },
 ];
 
 export const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
@@ -89,7 +96,7 @@ export const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
             </label>
             <div className="flex flex-wrap gap-2.5 pt-1">
               {PRESET_COLORS.map((c) => {
-                const isSelected = selectedColor === c.hex;
+                const isSelected = selectedColor.toUpperCase() === c.hex.toUpperCase();
                 return (
                   <button
                     key={c.hex}
@@ -107,6 +114,35 @@ export const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
                   </button>
                 );
               })}
+            </div>
+            <div className="flex items-center gap-2.5 mt-2 pt-2.5 border-t border-[#2A2D36]/70">
+              <label
+                className="relative w-8 h-8 rounded-[8px] cursor-pointer flex items-center justify-center overflow-hidden border-[2px] border-[#2A2D36] hover:border-white/50 transition-colors shrink-0"
+                style={{ backgroundColor: selectedColor }}
+                title="Open System Color Picker"
+              >
+                <Palette size={14} className="text-white mix-blend-difference pointer-events-none" />
+                <input
+                  type="color"
+                  value={selectedColor}
+                  onChange={(e) => setSelectedColor(e.target.value.toUpperCase())}
+                  className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                />
+              </label>
+              <input
+                type="text"
+                value={selectedColor}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                    setSelectedColor(val.toUpperCase());
+                  }
+                }}
+                maxLength={7}
+                placeholder="#3B82F6"
+                className="w-28 px-2.5 py-1.5 rounded-[8px] bg-[#0E0F12] border-[2px] border-[#2A2D36] text-white text-xs font-mono font-bold focus:outline-none focus:border-[#3B82F6] uppercase"
+              />
+              <span className="text-[11px] text-[#929394]">Custom WebColor</span>
             </div>
           </div>
 

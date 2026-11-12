@@ -41,17 +41,15 @@ export const OPENGRID_BED_OPTIONS = [
 ];
 
 const PRESET_COLORS = [
-  '#38BDF8', // Blue (HDMI)
-  '#F59E0B', // Orange (Power)
-  '#10B981', // Emerald (Network)
-  '#06B6D4', // Cyan (Data)
-  '#8B5CF6', // Purple (Video)
-  '#EC4899', // Pink
-  '#EAB308', // Yellow
-  '#EF4444', // Red
+  '#3B82F6', '#0EA5E9', '#06B6D4', '#14B8A6',
+  '#10B981', '#4FDA48', '#84CC16', '#EAB308',
+  '#F59E0B', '#F97316', '#EF4444', '#F43F5E',
+  '#EC4899', '#8B5CF6', '#F8FAFC', '#64748B',
 ];
 
 interface HeaderProps {
+  onExportJSON?: () => void;
+  onImportJSON?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   boardConfig: BoardConfig;
   onUpdateConfig: (newConfig: Partial<BoardConfig>) => void;
   onClearBoard?: () => void;
@@ -79,6 +77,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  onExportJSON,
+  onImportJSON,
   boardConfig,
   onUpdateConfig,
   onExportCSV,
@@ -1631,6 +1631,20 @@ export const Header: React.FC<HeaderProps> = ({
                       style={{ backgroundColor: c }}
                     />
                   ))}
+                  <label
+                    className={`relative w-5 h-5 rounded-full cursor-pointer flex items-center justify-center overflow-hidden border border-white/30 transition-transform ${
+                      !PRESET_COLORS.includes(newCatColor) ? 'scale-125 ring-2 ring-white ring-offset-1 ring-offset-[#15161A]' : 'hover:scale-110'
+                    }`}
+                    style={{ background: !PRESET_COLORS.includes(newCatColor) ? newCatColor : 'conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' }}
+                    title="Custom WebColor"
+                  >
+                    <input
+                      type="color"
+                      value={newCatColor}
+                      onChange={(e) => setNewCatColor(e.target.value.toUpperCase())}
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
                 </div>
               </div>
             </MiniNewPopover>
@@ -1692,6 +1706,20 @@ export const Header: React.FC<HeaderProps> = ({
                           style={{ backgroundColor: c }}
                         />
                       ))}
+                      <label
+                        className={`relative w-4 h-4 rounded-full cursor-pointer flex items-center justify-center overflow-hidden border border-white/30 transition-transform ${
+                          !PRESET_COLORS.includes(editingCatColor) ? 'scale-125 ring-2 ring-white ring-offset-1 ring-offset-[#1C1E26]' : 'hover:scale-110'
+                        }`}
+                        style={{ background: !PRESET_COLORS.includes(editingCatColor) ? editingCatColor : 'conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' }}
+                        title="Custom WebColor"
+                      >
+                        <input
+                          type="color"
+                          value={editingCatColor}
+                          onChange={(e) => setEditingCatColor(e.target.value.toUpperCase())}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                        />
+                      </label>
                     </div>
                   </div>
                 </>
@@ -1778,6 +1806,34 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>Download SVG</span>
                     </button>
                   )}
+                  {onExportJSON && (
+                    <button
+                      onClick={() => {
+                        onExportJSON();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-200 hover:bg-[#1C1D23] transition-colors"
+                    >
+                      <Download size={14} className="text-[#38BDF8]" />
+                      <span>Export Plan (JSON)</span>
+                    </button>
+                  )}
+                  {onImportJSON && (
+                    <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-200 hover:bg-[#1C1D23] cursor-pointer transition-colors">
+                      <Download size={14} className="text-[#EC4899] rotate-180" />
+                      <span>Import Plan (JSON)</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        className="hidden"
+                        onChange={(e) => {
+                          onImportJSON(e);
+                          setIsExportMenuOpen(false);
+                        }}
+                      />
+                    </label>
+                  )}
+
                 </div>
               )}
             </div>
