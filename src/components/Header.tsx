@@ -54,14 +54,10 @@ export const MULTIBOARD_BED_OPTIONS = [
 ];
 
 const PRESET_COLORS = [
-  '#38BDF8', // Blue (HDMI)
-  '#F59E0B', // Orange (Power)
-  '#10B981', // Emerald (Network)
-  '#06B6D4', // Cyan (Data)
-  '#8B5CF6', // Purple (Video)
-  '#EC4899', // Pink
-  '#EAB308', // Yellow
-  '#EF4444', // Red
+  '#3B82F6', '#0EA5E9', '#06B6D4', '#14B8A6',
+  '#10B981', '#4FDA48', '#84CC16', '#EAB308',
+  '#F59E0B', '#F97316', '#EF4444', '#F43F5E',
+  '#EC4899', '#8B5CF6', '#F8FAFC', '#64748B',
 ];
 
 interface HeaderProps {
@@ -1621,6 +1617,21 @@ export const Header: React.FC<HeaderProps> = ({
                       style={{ backgroundColor: c }}
                     />
                   ))}
+                  <label
+                    className={`relative w-5 h-5 rounded-full cursor-pointer flex items-center justify-center overflow-hidden border border-white/30 transition-transform ${
+                      !PRESET_COLORS.some((c) => c.toUpperCase() === newCatColor.toUpperCase()) ? 'scale-125 ring-2 ring-white ring-offset-1 ring-offset-[#15161A]' : 'hover:scale-110'
+                    }`}
+                    style={{ background: !PRESET_COLORS.some((c) => c.toUpperCase() === newCatColor.toUpperCase()) ? newCatColor : 'conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' }}
+                    title="Custom WebColor"
+                  >
+                    <input
+                      type="color"
+                      aria-label="Custom category color"
+                      value={newCatColor}
+                      onChange={(e) => setNewCatColor(e.target.value.toUpperCase())}
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
                 </div>
               </div>
             </MiniNewPopover>
@@ -1682,6 +1693,21 @@ export const Header: React.FC<HeaderProps> = ({
                           style={{ backgroundColor: c }}
                         />
                       ))}
+                      <label
+                        className={`relative w-4 h-4 rounded-full cursor-pointer flex items-center justify-center overflow-hidden border border-white/30 transition-transform ${
+                          !PRESET_COLORS.some((c) => c.toUpperCase() === editingCatColor.toUpperCase()) ? 'scale-125 ring-2 ring-white ring-offset-1 ring-offset-[#1C1E26]' : 'hover:scale-110'
+                        }`}
+                        style={{ background: !PRESET_COLORS.some((c) => c.toUpperCase() === editingCatColor.toUpperCase()) ? editingCatColor : 'conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' }}
+                        title="Custom WebColor"
+                      >
+                        <input
+                          type="color"
+                          aria-label="Edit custom category color"
+                          value={editingCatColor}
+                          onChange={(e) => setEditingCatColor(e.target.value.toUpperCase())}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                        />
+                      </label>
                     </div>
                   </div>
                 </>
