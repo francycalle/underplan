@@ -1,3 +1,4 @@
+import { buildExportFilename, parseProjectPlan, serializeProjectPlan } from './lib/projectIO';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   BoardConfig,
@@ -572,6 +573,76 @@ export default function App() {
     showToast('Canvas cleared', 'info');
   };
 
+  const handleExportJSON = () => {
+    try {
+      const json = serializeProjectPlan({
+        projectTitle,
+        boardConfig,
+        channels,
+        categories,
+        customAccessories,
+        projects,
+        activeProjectId,
+      });
+
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = buildExportFilename(projectTitle);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Plan exported as JSON', 'success');
+    } catch (err) {
+      console.error('Export plan failed:', err);
+      showToast('Failed to export plan JSON', 'warning');
+    }
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onerror = () => {
+      console.error('Failed to read configuration file:', reader.error);
+      showToast('Failed to read configuration file', 'warning');
+      e.target.value = '';
+    };
+
+    reader.onload = (event) => {
+      try {
+        const text = typeof event.target?.result === 'string' ? event.target.result : '';
+        if (!text.trim()) {
+          showToast('Selected JSON file is empty', 'warning');
+          return;
+        }
+
+        const data = parseProjectPlan(text);
+
+        setBoardConfig(data.boardConfig);
+        setChannels(data.channels);
+        if (data.categories) setCategories(data.categories);
+        if (data.customAccessories) setCustomAccessories(data.customAccessories);
+        if (data.projectTitle !== undefined) setProjectTitle(data.projectTitle);
+        if (data.projects) setProjects(data.projects);
+        if (data.activeProjectId) setActiveProjectId(data.activeProjectId);
+        setSelectedChannelId(null);
+
+        showToast('Plan imported successfully', 'success');
+      } catch (err) {
+        console.error('Import plan failed:', err);
+        const message = err instanceof Error ? err.message : 'Invalid UnderPlan JSON file';
+        showToast(`Import failed: ${message}`, 'warning');
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleExportCSV = () => {
     const csv = formatBOMAsCSV(bom);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -738,6 +809,8 @@ export default function App() {
           onUpdateConfig={handleUpdateConfig}
           onClearBoard={handleClearBoard}
           onExportCSV={handleExportCSV}
+          onExportJSON={handleExportJSON}
+          onImportJSON={handleImportJSON}
           onCopyBOM={handleCopyBOM}
           onExportPNG={handleExportPNG}
           onExportSVG={handleExportSVG}
