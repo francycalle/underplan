@@ -27,6 +27,7 @@ import {
   getYBranchChannelGeometry,
   getChannelOutlinePath,
   getDiagonalChannelGeometry,
+  getDiagonalTurnGeometry,
   isChannelOutOfBounds,
   rotatePlacedChannel,
 } from '../lib/geometry';
@@ -328,7 +329,11 @@ export const Canvas: React.FC<CanvasProps> = ({
       kind = 'mitred';
       length = undefined;
       mitreArmAVal = mitreArmA;
-      mitreArmBVal = mitreArmB;
+    } else if (activeTool === 'diagonal_turn') {
+      kind = 'diagonal_turn';
+      length = undefined;
+      mitreArmAVal = 1;
+      mitreArmBVal = 1;
     } else if (activeTool === 'spool') {
       kind = 'spool';
       length = 6;
@@ -587,7 +592,11 @@ export const Canvas: React.FC<CanvasProps> = ({
         kind = 'mitred';
         length = undefined;
         mitreArmAVal = mitreArmA;
-        mitreArmBVal = mitreArmB;
+      } else if (activeTool === 'diagonal_turn') {
+      kind = 'diagonal_turn';
+      length = undefined;
+      mitreArmAVal = 1;
+      mitreArmBVal = 1;
       } else if (activeTool === 'spool') {
         kind = 'spool';
         length = 6;
@@ -1289,8 +1298,26 @@ export const Canvas: React.FC<CanvasProps> = ({
           );
         })()}
 
+        {/* Render Smooth Chamfered Polygon for Diagonal Turn Channels */}
+        {channel.kind === 'diagonal_turn' && (() => {
+          const turnGeom = getDiagonalTurnGeometry(displayChannel, pitch, MARGIN);
+          return (
+            <g key={`diagonal-turn-${channel.id}`}>
+              <path
+                d={turnGeom.ductPath}
+                fill={catColor}
+                fillOpacity={isGhost ? 0.12 : 0.22}
+                stroke={borderColor}
+                strokeWidth={1.5}
+                strokeOpacity={isGhost ? 0.85 : 1}
+                strokeLinejoin="round"
+              />
+            </g>
+          );
+        })()}
+
         {/* Unified Channel Perimeter Outline (No internal cell overlapping lines) */}
-        {channel.kind !== 'curved' && channel.kind !== 'y_split' && channel.kind !== 'spool' && channel.kind !== 'socket_holder' && channel.kind !== 'accessory' && !(channel.kind === 'diagonal' && channel.diagonalVector) && (() => {
+        {channel.kind !== 'curved' && channel.kind !== 'y_split' && channel.kind !== 'diagonal_turn' && channel.kind !== 'spool' && channel.kind !== 'socket_holder' && channel.kind !== 'accessory' && !(channel.kind === 'diagonal' && channel.diagonalVector) && (() => {
           const outlinePath = getChannelOutlinePath(displayChannel, pitch, MARGIN);
           return (
             <g key={`channel-outline-${channel.id}`}>
