@@ -866,7 +866,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         </div>
 
         {/* Edit Mount points button (only when channel is placed/selected) */}
-        {selectedChannel && onToggleMountEdit && (
+        {selectedChannel && selectedChannel.kind !== 'diagonal_turn' && onToggleMountEdit && (
           <button
             type="button"
             onClick={onToggleMountEdit}
