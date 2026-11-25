@@ -1508,6 +1508,66 @@ export function getCanonicalChannelSpec(
       };
     }
 
+    case 'diagonal_turn': {
+      const unitsOver = Math.max(1, Math.min(8, Math.floor(mitreArmA || 1)));
+      const unitsUp = Math.max(1, Math.min(8, Math.floor(mitreArmB || 1)));
+      const w = Math.max(1, Math.min(2, Math.floor(widthUnits || 1)));
+      const boundW = unitsOver + 1;
+      const boundH = unitsUp + 1;
+
+      const cells: GridPoint[] = [];
+      const visited = new Set<string>();
+      const addCell = (cx: number, cy: number) => {
+        if (cx < 0 || cx >= boundW || cy < 0 || cy >= boundH) return;
+        const key = `${cx},${cy}`;
+        if (!visited.has(key)) {
+          visited.add(key);
+          cells.push({ x: cx, y: cy });
+        }
+      };
+
+      // Bottom-left vertical port: x in [0..w-1], y = unitsUp
+      for (let dw = 0; dw < w; dw++) {
+        addCell(dw, unitsUp);
+      }
+
+      // Diagonal centerline from bend 1 (0, max(0, unitsUp - 1)) to bend 2 (max(0, unitsOver - 1), 0)
+      const pStart = { x: 0, y: Math.max(0, unitsUp - 1) };
+      const pEnd = { x: Math.max(0, unitsOver - 1), y: 0 };
+      const steps = Math.max(1, Math.max(Math.abs(pEnd.x - pStart.x), Math.abs(pEnd.y - pStart.y)) * 2);
+
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const bx = Math.round(pStart.x + t * (pEnd.x - pStart.x));
+        const by = Math.round(pStart.y + t * (pEnd.y - pStart.y));
+        for (let dw = 0; dw < w; dw++) {
+          addCell(bx + dw, by);
+          if (w > 1) addCell(bx, by + dw);
+        }
+      }
+
+      // Top-right horizontal port: x = unitsOver, y in [0..w-1]
+      for (let dw = 0; dw < w; dw++) {
+        addCell(unitsOver, dw);
+      }
+
+      // Snap points strictly at the two straight end ports (bottom-left and top-right)
+      const snapPoints: GridPoint[] = [];
+      for (let dw = 0; dw < w; dw++) {
+        snapPoints.push({ x: dw, y: unitsUp });
+      }
+      for (let dw = 0; dw < w; dw++) {
+        snapPoints.push({ x: unitsOver, y: dw });
+      }
+
+      return {
+        cells: Object.freeze(cells),
+        width: boundW,
+        height: boundH,
+        snapIndices: Object.freeze(snapPoints),
+      };
+    }
+
     case 'mitred': {
       // 90° mitered corner with distinct 45° seam and scalable width (1 or 2 MU):
       const armA = Math.max(2, Math.min(8, Math.floor(mitreArmA || 2)));
@@ -2202,6 +2262,8 @@ export function getChannelUnitLength(channel: PlacedChannel): number {
       return (channel.yBranchUnits ?? channel.yTrunkUnits ?? 1) + (channel.widthUnits && channel.widthUnits > 1 ? 2 : 1);
     case 'diagonal':
       return Math.max(1, Math.floor(channel.length ?? 3));
+    case 'diagonal_turn':
+      return Math.max(channel.mitreArmA ?? 1, channel.mitreArmB ?? 1) + 1;
     case 'mitred':
       return Math.max(channel.mitreArmA ?? 2, channel.mitreArmB ?? 2);
     case 'spool':
@@ -3099,3 +3161,130 @@ export function mirrorPlacedChannel(
 }
 
 
+
+
+/**
+ * Computes exact 45-degree chamfered 90-degree turn polygon SVG path
+ * for 'diagonal_turn' channels (Underware_Diagonal_Channel.scad Output_Direction="Turn"),
+ * supporting independent X (Units Over) and Y (Units Up) spans and 1-2 MU widths.
+ */
+export function getDiagonalTurnGeometry(
+  channel: PlacedChannel,
+  pitchMm: number = 25,
+  margin: number = 30
+): {
+  ductPath: string;
+} {
+  const unitsOver = Math.max(1, Math.min(8, Math.floor(channel.mitreArmA || 1)));
+  const unitsUp = Math.max(1, Math.min(8, Math.floor(channel.mitreArmB || 1)));
+  const w = Math.max(1, Math.min(2, Math.floor(channel.widthUnits || 1)));
+  const rot = channel.rotation;
+
+  const boundW = unitsOver + 1;
+  const boundH = unitsUp + 1;
+  const posX = Math.round(channel.position.x);
+  const posY = Math.round(channel.position.y);
+
+  function transformPt(canMmX: number, canMmY: number): { x: number; y: number } {
+    let holeX = canMmX / pitchMm;
+    const holeY = canMmY / pitchMm;
+    if (channel.mirrored) {
+      holeX = (boundW - 1) - holeX;
+    }
+    const rotated = rotateLocalContinuousPoint({ x: holeX, y: holeY }, boundW, boundH, rot);
+    return {
+      x: margin + (posX + rotated.x) * pitchMm,
+      y: margin + (posY + rotated.y) * pitchMm,
+    };
+  }
+
+  // Exact Underware_Diagonal_Channel.scad (Output_Direction="Turn", Straight_Distance=25mm):
+  // Canonical orientation (matches OpenSCAD preview):
+  // - Port 1 (Bottom-Left): vertical leg entering from bottom edge y = (unitsUp + 0.5)*pitch,
+  //   going straight UP for Straight_Distance = 25mm (1 MU) to yBend1 = (unitsUp - 0.5)*pitch.
+  // - Port 2 (Top-Right): horizontal leg exiting to right edge x = (unitsOver + 0.5)*pitch,
+  //   coming straight from xBend2 = (unitsOver - 0.5)*pitch (Straight_Distance = 25mm).
+  // - Diagonal segment connects (xc, yBend1) to (xBend2, yc) with parallel walls of half-width h!
+  const h = (w * pitchMm) / 2;
+  const xc = ((w - 1) / 2) * pitchMm;
+  const yc = ((w - 1) / 2) * pitchMm;
+
+  const xLeft = xc - h;
+  const xInner = xc + h;
+  const xBend2 = Math.max(xInner, (unitsOver - 0.5) * pitchMm);
+  const xRight = (unitsOver + 0.5) * pitchMm;
+
+  const yTop = yc - h;
+  const yInner = yc + h;
+  const yBend1 = Math.max(yInner, (unitsUp - 0.5) * pitchMm);
+  const yBottom = (unitsUp + 0.5) * pitchMm;
+
+  // Centerline bend points (after 25mm straight collar at each end)
+  const p1 = { x: xc, y: yBend1 };
+  const p2 = { x: xBend2, y: yc };
+
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy);
+
+  let inBot: { x: number; y: number };
+  let inTop: { x: number; y: number };
+  let outBot: { x: number; y: number };
+  let outTop: { x: number; y: number };
+
+  if (len < 1e-3) {
+    // Degenerate 1x1 case: exact 45-degree chamfered corner
+    const cham = 0.5 * pitchMm;
+    inBot = { x: xInner, y: yInner + cham };
+    inTop = { x: xInner + cham, y: yInner };
+    outBot = { x: xLeft, y: yInner };
+    outTop = { x: xInner, y: yTop };
+  } else {
+    const tx = dx / len;
+    const ty = dy / len;
+    // Left-of-travel (outer top-left wall) & Right-of-travel (inner bottom-right wall)
+    const nOuter = { x: ty, y: -tx };
+    const nInner = { x: -ty, y: tx };
+
+    const qOut = { x: p1.x + h * nOuter.x, y: p1.y + h * nOuter.y };
+    const qIn = { x: p1.x + h * nInner.x, y: p1.y + h * nInner.y };
+
+    const intersectV = (x0: number, q: { x: number; y: number }) => ({
+      x: x0,
+      y: q.y + ((x0 - q.x) / tx) * ty,
+    });
+    const intersectH = (y0: number, q: { x: number; y: number }) => ({
+      x: q.x + ((y0 - q.y) / ty) * tx,
+      y: y0,
+    });
+
+    const rawOutBot = intersectV(xLeft, qOut);
+    const rawOutTop = intersectH(yTop, qOut);
+    outBot = { x: xLeft, y: Math.min(yBottom, Math.max(yTop, rawOutBot.y)) };
+    outTop = { x: Math.max(xLeft, Math.min(xRight, rawOutTop.x)), y: yTop };
+
+    const rawInBot = intersectV(xInner, qIn);
+    const rawInTop = intersectH(yInner, qIn);
+    inBot = { x: xInner, y: Math.min(yBottom, Math.max(yInner, rawInBot.y)) };
+    inTop = { x: Math.max(xInner, Math.min(xRight, rawInTop.x)), y: yInner };
+  }
+
+  // Trace perimeter clockwise starting from bottom-left vertical port:
+  const pts = [
+    transformPt(xLeft, yBottom),
+    transformPt(outBot.x, outBot.y),
+    transformPt(outTop.x, outTop.y),
+    transformPt(xRight, yTop),
+    transformPt(xRight, yInner),
+    transformPt(inTop.x, inTop.y),
+    transformPt(inBot.x, inBot.y),
+    transformPt(xInner, yBottom),
+  ];
+
+  const ductPath =
+    'M ' +
+    pts.map((p) => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' L ') +
+    ' Z';
+
+  return { ductPath };
+}

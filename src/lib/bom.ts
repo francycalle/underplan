@@ -78,6 +78,11 @@ export function getChannelPartNumber(
       const off = offsetUnits ?? 1;
       return `MB-CHAN-DIAG-${len}X${off}U${modSuffix}`;
     }
+    case 'diagonal_turn': {
+      const armA = mitreArmA ?? 1;
+      const armB = mitreArmB ?? 1;
+      return `MB-CHAN-DTURN-${armA}X${armB}U${modSuffix}`;
+    }
     case 'mitred': {
       const armA = mitreArmA ?? 2;
       const armB = mitreArmB ?? 2;
@@ -157,6 +162,11 @@ export function getChannelDisplayName(
       const off = offsetUnits ?? 1;
       return `Diagonal Channel (Jog 45°) ${len}×${off} ${unit}${dimTag} (${len * pitchMm}mm)`;
     }
+    case 'diagonal_turn': {
+      const armA = mitreArmA ?? 1;
+      const armB = mitreArmB ?? 1;
+      return `Diagonal Turn ${armA}×${armB} ${unit}${dimTag} (${(armA + 1) * pitchMm}×${(armB + 1) * pitchMm}mm)`;
+    }
     case 'mitred': {
       const armA = mitreArmA ?? 2;
       const armB = mitreArmB ?? 2;
@@ -215,6 +225,11 @@ export function getChannelDescription(
       const l = length ?? 3;
       const o = offsetUnits ?? 1;
       return `Underware 45° offset jog segment ${l}×${o} MU (${l * 25} mm) for lateral lane shifts.`;
+    }
+    case 'diagonal_turn': {
+      const a = mitreArmA ?? 1;
+      const b = mitreArmB ?? 1;
+      return `Underware 90° chamfered diagonal turn ${a}×${b} MU (${a * 25}×${b * 25} mm) for angled corners.`;
     }
     case 'mitred': {
       const a = mitreArmA ?? 2;
@@ -947,6 +962,7 @@ export function generateBOM(
     y_split: 0,
     diagonal: 0,
     mitred: 0,
+    diagonal_turn: 0,
     spool: 0,
     socket_holder: 0,
     accessory: 0,

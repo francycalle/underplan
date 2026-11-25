@@ -350,6 +350,7 @@ export const MOUNTING_OPTIONS: readonly MountingOption[] = Object.freeze([
  * - 'y_split': 45-degree Y-branch fork
  * - 'diagonal': 45-degree dogleg / jog offset channel
  * - 'mitred': 90-degree square mitered corner
+ * - 'diagonal_turn': 90-degree chamfered diagonal turn with independent X/Y spans
  */
 export type ChannelKind =
   | 'straight'
@@ -360,6 +361,7 @@ export type ChannelKind =
   | 'y_split'
   | 'diagonal'
   | 'mitred'
+  | 'diagonal_turn'
   | 'spool'
   | 'socket_holder'
   | 'accessory';

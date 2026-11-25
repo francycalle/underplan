@@ -98,6 +98,7 @@ const renderChannelThumbnail = (kind: string, color: string) => {
           strokeLinejoin="round"
         />
       );
+    case 'diagonal_turn':
     case 'mitred':
       return (
         <path
@@ -152,6 +153,7 @@ const getChannelKindFromItem = (item: BOMItem): string => {
   if (pn.includes('-JNC-')) return 'junction';
   if (pn.includes('-YSPL-')) return 'y_split';
   if (pn.includes('-DIAG-')) return 'diagonal';
+  if (pn.includes('-DTURN-')) return 'diagonal_turn';
   if (pn.includes('-MTR-')) return 'mitred';
   if (pn.includes('SPOOL')) return 'spool';
   if (pn.includes('ACC')) return 'accessory';

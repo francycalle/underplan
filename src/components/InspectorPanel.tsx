@@ -118,6 +118,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
   const isStraight = activeKind === 'straight';
   const isElbow = activeKind === 'corner' || (activeKind as string) === 'elbow';
+  const isDiagonalTurn = activeKind === 'diagonal_turn' || activeKind === 'mitred';
   const isRound = activeKind === 'curved' || (activeKind as string) === 'round';
   const isTChannel = activeKind === 'junction' || (activeKind as string) === 't';
   const isXChannel = activeKind === 'cross' || (activeKind as string) === 'x';
@@ -131,6 +132,10 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   // Current values
   const currentLength = selectedChannel ? (selectedChannel.length ?? 3) : (straightLength ?? 10);
   const currentArmSpan = selectedChannel ? (selectedChannel.armSpanUnits ?? 2) : (armSpanUnits ?? 2);
+  const defaultArm = activeKind === 'diagonal_turn' ? 1 : 2;
+  const minArm = activeKind === 'diagonal_turn' ? 1 : 2;
+  const currentMitreA = selectedChannel ? (selectedChannel.mitreArmA ?? defaultArm) : defaultArm;
+  const currentMitreB = selectedChannel ? (selectedChannel.mitreArmB ?? defaultArm) : defaultArm;
   const currentRadius = selectedChannel ? (selectedChannel.radiusUnits ?? 2) : (curvedRadius ?? 2);
   const currentTrunk = selectedChannel ? (selectedChannel.trunkSpanUnits ?? 3) : (trunkSpanUnits ?? 3);
   const currentBranch = selectedChannel ? (selectedChannel.branchSpanUnits ?? 2) : (branchSpanUnits ?? 2);
@@ -436,6 +441,99 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TOPOLOGY 2B: DIAGONAL TURN / MITRED CHANNEL (Independent X & Y Arm Spans) */}
+      {/* ========================================================================= */}
+      {isDiagonalTurn && selectedChannel && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-['Figtree'] font-bold uppercase tracking-wider text-[#929394]">
+              X Span / Units Over ({unitName})
+            </span>
+            <div className="flex items-center justify-between w-[180px]">
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateChannel({
+                    ...selectedChannel,
+                    mitreArmA: Math.max(minArm, currentMitreA - 1),
+                    connectorMode: 'auto',
+                    customMountIndices: undefined,
+                    customMountPoints: undefined,
+                  })
+                }
+                disabled={currentMitreA <= minArm}
+                className="w-[45px] h-[30px] rounded-[10px] bg-[#15161A] hover:bg-[#1C1D23] active:scale-95 disabled:opacity-40 border-[2px] border-[#15161A] hover:border-[#383C48] flex items-center justify-center text-white font-['Figtree'] font-black text-sm transition-all"
+              >
+                -
+              </button>
+              <div className="w-[80px] h-[30px] rounded-[10px] bg-[#15161A] border-[2px] border-[#15161A] flex items-center justify-center font-['Figtree'] font-black text-sm text-white">
+                {currentMitreA}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateChannel({
+                    ...selectedChannel,
+                    mitreArmA: Math.min(8, currentMitreA + 1),
+                    connectorMode: 'auto',
+                    customMountIndices: undefined,
+                    customMountPoints: undefined,
+                  })
+                }
+                disabled={currentMitreA >= 8}
+                className="w-[45px] h-[30px] rounded-[10px] bg-[#15161A] hover:bg-[#1C1D23] active:scale-95 disabled:opacity-40 border-[2px] border-[#15161A] hover:border-[#383C48] flex items-center justify-center text-white font-['Figtree'] font-black text-sm transition-all"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-['Figtree'] font-bold uppercase tracking-wider text-[#929394]">
+              Y Span / Units Up ({unitName})
+            </span>
+            <div className="flex items-center justify-between w-[180px]">
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateChannel({
+                    ...selectedChannel,
+                    mitreArmB: Math.max(minArm, currentMitreB - 1),
+                    connectorMode: 'auto',
+                    customMountIndices: undefined,
+                    customMountPoints: undefined,
+                  })
+                }
+                disabled={currentMitreB <= minArm}
+                className="w-[45px] h-[30px] rounded-[10px] bg-[#15161A] hover:bg-[#1C1D23] active:scale-95 disabled:opacity-40 border-[2px] border-[#15161A] hover:border-[#383C48] flex items-center justify-center text-white font-['Figtree'] font-black text-sm transition-all"
+              >
+                -
+              </button>
+              <div className="w-[80px] h-[30px] rounded-[10px] bg-[#15161A] border-[2px] border-[#15161A] flex items-center justify-center font-['Figtree'] font-black text-sm text-white">
+                {currentMitreB}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateChannel({
+                    ...selectedChannel,
+                    mitreArmB: Math.min(8, currentMitreB + 1),
+                    connectorMode: 'auto',
+                    customMountIndices: undefined,
+                    customMountPoints: undefined,
+                  })
+                }
+                disabled={currentMitreB >= 8}
+                className="w-[45px] h-[30px] rounded-[10px] bg-[#15161A] hover:bg-[#1C1D23] active:scale-95 disabled:opacity-40 border-[2px] border-[#15161A] hover:border-[#383C48] flex items-center justify-center text-white font-['Figtree'] font-black text-sm transition-all"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -768,7 +866,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         </div>
 
         {/* Edit Mount points button (only when channel is placed/selected) */}
-        {selectedChannel && onToggleMountEdit && (
+        {selectedChannel && selectedChannel.kind !== 'diagonal_turn' && onToggleMountEdit && (
           <button
             type="button"
             onClick={onToggleMountEdit}

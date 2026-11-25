@@ -21,6 +21,7 @@ export type ToolType =
   | 'y_split'
   | 'diagonal'
   | 'mitred'
+  | 'diagonal_turn'
   | 'spool'
   | 'socket_holder'
   | 'accessory';
@@ -205,6 +206,21 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
       ),
     },
     {
+
+      type: 'diagonal_turn',
+      label: 'Diagonal Turn (90°)',
+      renderPath: (color) => (
+        <path
+          d="M28.5 18V27.5H39V36H23.5L19 31.5V18H28.5Z"
+          fill={color}
+          fillOpacity={0.5}
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      ),
+    },
+    {
       type: 'curved',
       label: 'Curved Radial',
       renderPath: (color) => (
@@ -277,7 +293,7 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center w-[395px] h-[70px] p-[5px] rounded-[20px] bg-[#2A2D36] shadow-2xl gap-[5px]">
+          <div className="flex items-center w-auto px-[10px] h-[70px] p-[5px] rounded-[20px] bg-[#2A2D36] shadow-2xl gap-[5px]">
             {REGULAR_CHANNELS.map((ch) => {
               const isActive = activeTool === ch.type;
               return (
